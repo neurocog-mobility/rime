@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "name": "Notes Only",
+  "lanes": [
+    {
+      "name": "Notes",
+      "level": 1,
+      "color": "#7a8a99",
+      "labels": [
+        "Notes"
+      ]
+    }
+  ],
+  "groups": [],
+  "rules": []
+}

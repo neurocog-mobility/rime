@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+.env/
+
+# Test, lint, and tool caches
+.cache/
+.matplotlib-cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+notes/
+sample-data/
+scripts/
+models/
+*.egg-info/
+
+# Notebooks
+.ipynb_checkpoints/

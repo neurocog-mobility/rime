@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neurocog-rime-core"
+version = "0.1.0"
+description = "Headless core logic for the RIME multimodal annotation platform"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Lab Neurocog" }
+]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+    "pympi-ling>=1.71",
+]
+
+[project.optional-dependencies]
+onnx = [
+    "onnxruntime>=1.16",
+]
+video = [
+    "opencv-contrib-python>=4.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rime_core"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/rime_core/config" = "rime_core/config"
