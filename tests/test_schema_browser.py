@@ -9,10 +9,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 from rime_core.schema import DEFAULT_SCHEMA_PATH, NOTES_ONLY_SCHEMA_PATH, ProtocolSchema
-from rime_core.session import SignalConfig
-from rime_ui.main_window import RimeMainWindow
-from rime_ui.schema_browser import SchemaBrowserWindow
-from rime_ui.session_wizard import SessionWizard
+from rime_core.sessions import SignalConfig
+from rime_ui.dialogs.schema_browser import SchemaBrowserWindow
+from rime_ui.dialogs.session_wizard import SessionWizard
+from rime_ui.windows.main_window import RimeMainWindow
 
 
 def _app() -> QApplication:
@@ -168,7 +168,7 @@ def test_main_window_opens_schema_browser() -> None:
     assert window.schema_builder_action.text() == "View Schema..."
     assert observed["title"] == "Schema Viewer"
     assert observed["read_only"] is True
-    assert observed["schema_name"] == "FOG-COA"
+    assert observed["schema_name"] == "GP-FOG"
 
     window.close()
 
@@ -180,7 +180,7 @@ def test_schema_browser_chooser_mode_emits_selected_schema(tmp_path: Path) -> No
 
     chosen: list[tuple[str, str]] = []
     window.schema_chosen.connect(lambda path, schema: chosen.append((path, schema.name)))
-    from rime_ui import schema_browser as schema_browser_module
+    from rime_ui.dialogs import schema_browser as schema_browser_module
 
     original_dialog = schema_browser_module.QFileDialog.getSaveFileName
     schema_browser_module.QFileDialog.getSaveFileName = staticmethod(
@@ -191,7 +191,7 @@ def test_schema_browser_chooser_mode_emits_selected_schema(tmp_path: Path) -> No
     finally:
         schema_browser_module.QFileDialog.getSaveFileName = original_dialog
 
-    assert chosen == [(str(output_path), "FOG-COA")]
+    assert chosen == [(str(output_path), "GP-FOG")]
     assert output_path.exists()
     window.close()
 
@@ -202,7 +202,7 @@ def test_session_wizard_uses_builtin_schema_selection() -> None:
 
     assert wizard._selected_schema_path == DEFAULT_SCHEMA_PATH
     assert wizard._selected_schema is not None
-    assert wizard._selected_schema.name == "FOG-COA"
+    assert wizard._selected_schema.name == "GP-FOG"
 
     notes_index = next(
         idx for idx in range(wizard.schema_combo.count()) if wizard.schema_combo.itemData(idx)[0] == "notes_only"

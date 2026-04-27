@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rime_core.annotations import AnnotationStore
+from rime_core.common.intervals import merge_intervals, union_duration_ms
 
 
 @dataclass(frozen=True)
@@ -77,17 +78,5 @@ def _matches_spec(lane: str, label: str, spec: CoverageSpec) -> bool:
 
 def _union_duration_ms(intervals: list[tuple[float, float]]) -> tuple[float, int]:
     """Return merged duration and merged-episode count."""
-    if not intervals:
-        return 0.0, 0
-
-    merged: list[tuple[float, float]] = []
-    for start, end in sorted(intervals):
-        if end <= start:
-            continue
-        if merged and start <= merged[-1][1]:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
-        else:
-            merged.append((start, end))
-
-    total_ms = sum(end - start for start, end in merged)
-    return float(total_ms), len(merged)
+    merged = merge_intervals(intervals)
+    return union_duration_ms(merged), len(merged)

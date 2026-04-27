@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from rime_core import Annotation, AnnotationStore, ReviewLayer, load_review_layer
 
 
@@ -64,16 +62,3 @@ def test_pending_review_layer_preserves_source_verbatim() -> None:
 
     assert store.get("a1") is not None
     assert store.get("a1").source == "gold_standard"
-
-
-def test_reference_review_layer_raises_not_implemented() -> None:
-    store = AnnotationStore()
-    layer = ReviewLayer(
-        source="rater:user_a",
-        mode="reference",
-        annotations=[],
-        label="Alice",
-    )
-
-    with pytest.raises(NotImplementedError, match="not yet implemented"):
-        load_review_layer(store, layer)

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from rime_core.loaders import SignalLoaderError, SignalLoaderRegistry
-from rime_core.session import SignalConfig
+from rime_core.sessions import SignalConfig
 
 
 def test_default_registry_loads_csv(tmp_path: Path) -> None:

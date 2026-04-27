@@ -6,9 +6,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication
 
-from rime_core.session import SessionProvenance, VideoConfig, create_session
-from rime_ui import main_window as main_window_module
-from rime_ui.main_window import RimeMainWindow
+from rime_core.sessions import SessionProvenance, VideoConfig, create_session
+from rime_ui.windows import main_window as main_window_module
+from rime_ui.windows.main_window import RimeMainWindow
 
 
 def _app() -> QApplication:

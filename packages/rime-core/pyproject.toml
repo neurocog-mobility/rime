@@ -17,15 +17,12 @@ dependencies = [
     "pandas>=2.0",
     "scipy>=1.10",
     "pympi-ling>=1.71",
-]
-
-[project.optional-dependencies]
-onnx = [
     "onnxruntime>=1.16",
-]
-video = [
     "opencv-contrib-python>=4.8",
 ]
+
+[tool.hatch.build]
+ignore-vcs = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rime_core"]

@@ -6,7 +6,7 @@ import pandas as pd
 from PySide6.QtWidgets import QApplication
 
 from rime_core.signals import Signal
-from rime_ui.signals import SignalTrackWidget
+from rime_ui.widgets.signals import SignalTrackWidget
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 

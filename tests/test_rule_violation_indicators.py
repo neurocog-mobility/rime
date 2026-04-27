@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication
 from rime_core.annotations import Annotation, AnnotationStore
 from rime_core.rule_engine import RuleEngine
 from rime_core.schema import ProtocolSchema
-from rime_ui.main_window import RimeMainWindow
+from rime_ui.windows.main_window import RimeMainWindow
 from rime_ui.timeline import TimelineWidget
 from rime_ui.timeline import annotation_indicator_symbols
 

@@ -8,7 +8,7 @@ from typing import Literal
 from rime_core.annotations import Annotation, AnnotationStore
 
 
-ReviewMode = Literal["pending", "reference"]
+ReviewMode = Literal["pending"]
 
 
 @dataclass
@@ -25,14 +25,11 @@ def load_review_layer(
     store: AnnotationStore,
     layer: ReviewLayer,
 ) -> list[Annotation]:
-    """Load external annotations into the working store or defer unsupported modes."""
+    """Load external annotations into the working store as pending ghosts."""
     if layer.mode == "pending":
         for annotation in layer.annotations:
             annotation.ghost = True
             store.add(annotation)
         return layer.annotations
-
-    if layer.mode == "reference":
-        raise NotImplementedError("Reference layer mode is not yet implemented")
 
     raise ValueError(f"Unsupported review mode: {layer.mode}")

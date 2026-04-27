@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from math import isnan
 
 from rime_core.annotations import Annotation, AnnotationStore
+from rime_core.common.intervals import annotation_iou, merge_intervals
 
 
 @dataclass(frozen=True)
@@ -14,8 +15,7 @@ class IRRLabelResult:
 
     label: str
     cohens_kappa: float
-    percent_agreement: float
-    episode_iou: float
+    set_iou: float
     matched: int
     unmatched_a: int
     unmatched_b: int
@@ -26,8 +26,7 @@ class IRRResult:
     """Aggregate IRR result for one lane selection."""
 
     cohens_kappa: float
-    frame_iou: float
-    percent_agreement: float
+    set_iou: float
     matched_episodes: list[tuple[Annotation, Annotation]]
     unmatched_a: list[Annotation]
     unmatched_b: list[Annotation]
@@ -61,7 +60,6 @@ def compute_irr(
         lane=lane,
     )
     matched, unmatched_a, unmatched_b = _match_episodes(annotations_a, annotations_b)
-    matched_ious = [_annotation_iou(a, b) for a, b in matched]
     labels = sorted({annotation.label for annotation in [*annotations_a, *annotations_b]})
 
     per_label: dict[str, IRRLabelResult] = {}
@@ -82,12 +80,10 @@ def compute_irr(
             label_annotations_a,
             label_annotations_b,
         )
-        label_ious = [_annotation_iou(a, b) for a, b in label_matched]
         per_label[label] = IRRLabelResult(
             label=label,
             cohens_kappa=_cohens_kappa(label_states_a, label_states_b),
-            percent_agreement=_percent_agreement(label_states_a, label_states_b),
-            episode_iou=float("nan") if not label_ious else sum(label_ious) / len(label_ious),
+            set_iou=_set_iou(label_annotations_a, label_annotations_b),
             matched=len(label_matched),
             unmatched_a=len(label_unmatched_a),
             unmatched_b=len(label_unmatched_b),
@@ -95,8 +91,7 @@ def compute_irr(
 
     return IRRResult(
         cohens_kappa=_cohens_kappa(states_a, states_b),
-        frame_iou=float("nan") if not matched_ious else sum(matched_ious) / len(matched_ious),
-        percent_agreement=_percent_agreement(states_a, states_b),
+        set_iou=_set_iou(annotations_a, annotations_b),
         matched_episodes=matched,
         unmatched_a=unmatched_a,
         unmatched_b=unmatched_b,
@@ -189,7 +184,7 @@ def _match_episodes(
                 continue
             if not _same_matching_key(annotation_a, annotation_b):
                 continue
-            iou = _annotation_iou(annotation_a, annotation_b)
+            iou = annotation_iou(annotation_a, annotation_b)
             if iou >= 0.1 and iou > best_iou:
                 best_iou = iou
                 best_match = annotation_b
@@ -210,16 +205,46 @@ def _same_matching_key(annotation_a: Annotation, annotation_b: Annotation) -> bo
         and annotation_a.event_type == annotation_b.event_type
     )
 
+def _merge_intervals(annotations: list[Annotation]) -> list[tuple[float, float]]:
+    return merge_intervals(
+        (annotation.start_ms, annotation.end_ms)
+        for annotation in annotations
+        if annotation.event_type != "point"
+    )
 
-def _annotation_iou(annotation_a: Annotation, annotation_b: Annotation) -> float:
-    start = max(annotation_a.start_ms, annotation_b.start_ms)
-    end = min(annotation_a.end_ms, annotation_b.end_ms)
-    intersection = max(0.0, end - start)
-    union_start = min(annotation_a.start_ms, annotation_b.start_ms)
-    union_end = max(annotation_a.end_ms, annotation_b.end_ms)
-    union = max(0.0, union_end - union_start)
-    if union == 0.0:
-        return 1.0 if annotation_a.start_ms == annotation_b.start_ms else 0.0
+
+def _set_iou(annotations_a: list[Annotation], annotations_b: list[Annotation]) -> float:
+    """Temporal set IoU: intersection/union of annotation masks, independent of episode matching."""
+    intervals_a = _merge_intervals(annotations_a)
+    intervals_b = _merge_intervals(annotations_b)
+    if not intervals_a and not intervals_b:
+        return float("nan")
+    if not intervals_a or not intervals_b:
+        return 0.0
+
+    intersection = 0.0
+    i, j = 0, 0
+    while i < len(intervals_a) and j < len(intervals_b):
+        start = max(intervals_a[i][0], intervals_b[j][0])
+        end = min(intervals_a[i][1], intervals_b[j][1])
+        if start < end:
+            intersection += end - start
+        if intervals_a[i][1] < intervals_b[j][1]:
+            i += 1
+        else:
+            j += 1
+
+    all_intervals = sorted(intervals_a + intervals_b)
+    union = 0.0
+    cur_start, cur_end = all_intervals[0]
+    for start, end in all_intervals[1:]:
+        if start <= cur_end:
+            cur_end = max(cur_end, end)
+        else:
+            union += cur_end - cur_start
+            cur_start, cur_end = start, end
+    union += cur_end - cur_start
+
     return intersection / union
 
 

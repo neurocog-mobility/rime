@@ -1,35 +1,67 @@
 """Core data models, loaders, and rule/import utilities."""
 
-from rime_core.annotations import Annotation, AnnotationStore, generate_id
-from rime_core.annotation_ops import edit_annotation_label, split_annotation
-from rime_core.cmf import CMFConfig, CMFLoader, CMFPackage, CMFValidationError
-from rime_core.coverage import CoverageResult, CoverageSpec, compute_coverage
-from rime_core.context import WorkingContext
-from rime_core.evaluation import EvalResult, evaluate_model
-from rime_core.elan_import import (
+from rime_core.annotation import (
+    Annotation,
+    AnnotationStore,
+    ReviewLayer,
+    RuleEngine,
+    SideEffect,
+    Violation,
+    edit_annotation_label,
+    generate_id,
+    load_review_layer,
+    split_annotation,
+)
+from rime_core.analysis import CoverageResult, CoverageSpec, EvalResult, IRRLabelResult, IRRResult
+from rime_core.analysis import compute_coverage, compute_irr, evaluate_model
+from rime_core.io import (
+    BIDSSessionPaths,
+    BidsSignalInput,
+    ExportError,
+    ExporterRegistry,
     ImportResult,
     TierMapping,
     auto_map_tiers,
-    extract_media_files,
-    import_eaf,
-    import_session_from_elan,
-    normalize_label,
-)
-from rime_core.export import (
-    ExportError,
-    ExporterRegistry,
+    bids_session_paths,
+    derive_matched_episode_interval,
     export_irr_report,
+    export_bids_channels,
+    export_bids_dataset,
+    export_bids_events,
+    export_bids_events_sidecar,
+    export_bids_motion,
+    export_bids_signal_clips,
+    export_matched_episode_parquet,
     export_parquet,
     export_session_report,
     export_signal_clips,
     export_video_clips,
+    extract_media_files,
+    import_eaf,
+    import_session_from_elan,
+    load_csv_signal,
+    normalize_label,
+    sanitize_bids_entity_value,
+    Signal,
+    SignalLoaderError,
+    SignalLoaderRegistry,
+    detect_signal_config,
+    write_bids_dataset_descriptions,
 )
-from rime_core.irr import IRRLabelResult, IRRResult, compute_irr
-from rime_core.inference import InferenceError, InferenceResult, InferenceRunner
-from rime_core.inference import InputBinding, OutputMapping, OutputPredictions
-from rime_core.loaders import SignalLoaderError, SignalLoaderRegistry
-from rime_core.review import ReviewLayer, load_review_layer
-from rime_core.rule_engine import RuleEngine, SideEffect, Violation
+from rime_core.modeling import (
+    CMFConfig,
+    CMFLoader,
+    CMFMissingRequirement,
+    CMFPackage,
+    CMFRequirement,
+    CMFValidationError,
+    InferenceError,
+    InferenceResult,
+    InferenceRunner,
+    InputBinding,
+    OutputMapping,
+    OutputPredictions,
+)
 from rime_core.schema import (
     LaneSchema,
     ProtocolSchema,
@@ -37,12 +69,11 @@ from rime_core.schema import (
     suggest_next_schema_version,
 )
 from rime_core.settings import AppSettings, load_settings, save_settings
-from rime_core.session import (
-    ModelSettings,
+from rime_core.sessions import (
     ClinicalMetricSpec,
     DEFAULT_PANEL_VISIBILITY,
     MAX_SESSION_VIDEOS,
-    normalize_session_videos,
+    ModelSettings,
     Session,
     SessionProvenance,
     SignalConfig,
@@ -50,9 +81,10 @@ from rime_core.session import (
     VideoConfig,
     create_session,
     load_session,
+    normalize_session_videos,
     save_session,
 )
-from rime_core.signals import Signal, detect_signal_config, load_csv_signal
+from rime_core.workspace import WorkingContext
 
 __all__ = [
     "Annotation",
@@ -63,6 +95,8 @@ __all__ = [
     "CMFConfig",
     "CMFPackage",
     "CMFLoader",
+    "CMFMissingRequirement",
+    "CMFRequirement",
     "CMFValidationError",
     "CoverageSpec",
     "CoverageResult",
@@ -90,7 +124,18 @@ __all__ = [
     "compute_irr",
     "ExporterRegistry",
     "ExportError",
+    "BIDSSessionPaths",
+    "BidsSignalInput",
+    "bids_session_paths",
+    "derive_matched_episode_interval",
+    "export_bids_channels",
+    "export_bids_dataset",
+    "export_bids_events",
+    "export_bids_events_sidecar",
+    "export_bids_motion",
+    "export_bids_signal_clips",
     "export_irr_report",
+    "export_matched_episode_parquet",
     "export_parquet",
     "export_session_report",
     "export_signal_clips",
@@ -104,6 +149,8 @@ __all__ = [
     "ImportResult",
     "auto_map_tiers",
     "normalize_label",
+    "sanitize_bids_entity_value",
+    "write_bids_dataset_descriptions",
     "extract_media_files",
     "import_eaf",
     "import_session_from_elan",

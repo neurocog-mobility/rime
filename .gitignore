@@ -26,8 +26,10 @@ build/
 dist/
 notes/
 sample-data/
+manuscript/
 scripts/
-models/
+submission_checklist.md
+/src/
 *.egg-info/
 
 # Notebooks

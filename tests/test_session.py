@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rime_core.session import (
+from rime_core.sessions import (
     ClinicalMetricSpec,
     DEFAULT_PANEL_VISIBILITY,
     ModelSettings,
@@ -71,6 +71,7 @@ def test_save_load_roundtrip(tmp_path: Path) -> None:
                 sync_method="utc",
                 channels=["acc_x", "acc_y"],
                 display_channels=["acc_y"],
+                units={"acc_x": "m/s^2", "acc_y": "m/s^2"},
             )
         ],
         subject=SubjectInfo(id="S001", condition="PD", medication_state="off"),
@@ -81,11 +82,12 @@ def test_save_load_roundtrip(tmp_path: Path) -> None:
             tier_map={"Task": "Tasks"},
             label_map={"Trajectory": "Walk"},
             rules_applied=True,
+            recording_relative_timing_verified=True,
         ),
     )
     session.session_start_utc = "2024-03-01T09:31:22Z"
     session.schema_path = "/tmp/fog-coa.json"
-    session.schema_name = "FOG-COA"
+    session.schema_name = "GP-FOG"
     session.schema_version = "1.1"
     session.model_settings["Walking Classifier"] = ModelSettings(
         params={"threshold": 0.7},
@@ -113,11 +115,12 @@ def test_save_load_roundtrip(tmp_path: Path) -> None:
     assert loaded.provenance.origin == "elan_import"
     assert loaded.provenance.tier_map == {"Task": "Tasks"}
     assert loaded.provenance.rules_applied is True
+    assert loaded.provenance.recording_relative_timing_verified is True
     assert loaded.subject is not None
     assert loaded.subject.id == "S001"
     assert loaded.rater == "MK"
     assert loaded.schema_path == "/tmp/fog-coa.json"
-    assert loaded.schema_name == "FOG-COA"
+    assert loaded.schema_name == "GP-FOG"
     assert loaded.schema_version == "1.1"
     assert loaded.session_start_utc == "2024-03-01T09:31:22Z"
     assert loaded.videos[0].name == "Front"
@@ -128,6 +131,7 @@ def test_save_load_roundtrip(tmp_path: Path) -> None:
     assert loaded.signals[0].sync_method == "utc"
     assert loaded.signals[0].channels == ["acc_x", "acc_y"]
     assert loaded.signals[0].display_channels == ["acc_y"]
+    assert loaded.signals[0].units == {"acc_x": "m/s^2", "acc_y": "m/s^2"}
     assert loaded.model_paths == {"Walking Classifier": "models/walking.rime"}
     assert loaded.get_model_path("Walking Classifier") == session.session_dir / "models/walking.rime"
     assert loaded.model_settings["Walking Classifier"].params == {"threshold": 0.7}
@@ -175,3 +179,4 @@ def test_load_session_defaults_missing_rater_to_empty_string(tmp_path: Path) -> 
     assert loaded.clinical_metrics == []
     assert loaded.panel_visibility == DEFAULT_PANEL_VISIBILITY
     assert loaded.dock_layout_state == ""
+    assert loaded.provenance.recording_relative_timing_verified is False

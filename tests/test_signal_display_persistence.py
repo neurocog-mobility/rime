@@ -5,10 +5,10 @@ import os
 import pandas as pd
 from PySide6.QtWidgets import QApplication
 
-from rime_core.context import WorkingContext
-from rime_core.session import SignalConfig, VideoConfig
+from rime_core.sessions import SignalConfig, VideoConfig
 from rime_core.signals import Signal
-from rime_ui.main_window import RimeMainWindow
+from rime_core.workspace import WorkingContext
+from rime_ui.windows.main_window import RimeMainWindow
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 

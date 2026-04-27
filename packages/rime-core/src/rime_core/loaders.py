@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from rime_core.session import SignalConfig
+from rime_core.sessions import SignalConfig
 from rime_core.signals import Signal, load_csv_signal
 
 

@@ -7,9 +7,8 @@ from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen, QPolygon, QWheelE
 from PySide6.QtWidgets import QScrollArea, QSplitter, QToolTip, QVBoxLayout, QWidget
 
 from rime_core.annotations import AnnotationStore
-from rime_core.schema import ProtocolSchema
-from rime_ui.schema_view import SchemaView
-from rime_ui.signals import SignalTrackWidget
+from rime_core.schema import LaneSchema, ProtocolSchema
+from rime_ui.widgets.signals import SignalTrackWidget
 from rime_ui.shortcuts import (
     ADD_SNAP_POINT,
     CLEAR_SELECTION,
@@ -52,6 +51,7 @@ LOOP_EDGE_HIT_RADIUS = 8
 LOOP_MIN_SPAN_MS = 100
 SESSION_A_SOURCE = "__session_a__"
 COMPARISON_SOURCE = "__comparison__"
+MATCHED_MODE_SOURCE = "__matched__"
 
 
 def annotation_indicator_symbols(*, ghost: bool = False, violating: bool = False) -> tuple[str, ...]:
@@ -83,10 +83,6 @@ class AnnotationLanes(QWidget):
     selection_changed = Signal(bool, bool)  # has_annotation, has_snap
     loop_region_changed = Signal(float, float)  # start_ms, end_ms
 
-    # Internal signals for hovering (to update overlays)
-    annotation_hovered = Signal(str)  # annotation_id
-    annotation_unhovered = Signal(str)  # annotation_id
-
     # Signal for overlay lane selection
     overlay_level_changed = Signal(int, object)  # level, source
     lane_header_context_requested = Signal(str, object, object)
@@ -94,7 +90,7 @@ class AnnotationLanes(QWidget):
     def __init__(self, schema: ProtocolSchema, parent=None) -> None:
         super().__init__(parent)
 
-        self.config = SchemaView(schema)
+        self.schema = schema
 
         # Group state
         self._group_state: dict[str, bool] = {}  # name -> collapsed
@@ -108,6 +104,8 @@ class AnnotationLanes(QWidget):
         self._current_position_ms: float = 0
         self._store: AnnotationStore | None = None
         self._comparison_store: AnnotationStore | None = None
+        self._matched_episode_store: AnnotationStore | None = None
+        self._matched_episode_label = "M"
         self._show_comparison = True
         self._comparison_lane_filter: str | None = None
         self._primary_source_filter: str | None = None
@@ -160,7 +158,7 @@ class AnnotationLanes(QWidget):
         self._recalculate_height()
 
     def set_schema(self, schema: ProtocolSchema) -> None:
-        self.config.set_schema(schema)
+        self.schema = schema
         self._group_state.clear()
         self._init_group_state()
         self._update_label_width()
@@ -169,7 +167,7 @@ class AnnotationLanes(QWidget):
     def _update_label_width(self) -> None:
         metrics = self.fontMetrics()
         widest_label = max(
-            (metrics.horizontalAdvance(str(lane["name"])) for lane in self.config.lanes),
+            (metrics.horizontalAdvance(lane.name) for lane in self.schema.lanes),
             default=0,
         )
         padded_width = widest_label + 36
@@ -177,19 +175,12 @@ class AnnotationLanes(QWidget):
 
     def _init_group_state(self) -> None:
         """Initialize group collapsed state from config."""
-        for group in self.config.groups:
+        for group in self.schema.groups:
             self._group_state[group["name"]] = group.get("collapsed", False)
 
     def _recalculate_height(self) -> None:
         """Calculate and set the required height based on visible lanes."""
-        total_height = RULER_HEIGHT + 20  # Buffer
-
-        for item in self._display_items():
-            if item["kind"] == "group_header":
-                total_height += HEADER_HEIGHT
-            else:
-                total_height += self._lane_total_height(item["lane"]["level"])
-
+        total_height = RULER_HEIGHT + 20 + sum(height for _item, _y, height in self._display_rows())
         self.setMinimumHeight(total_height)
         self.update()
 
@@ -205,6 +196,20 @@ class AnnotationLanes(QWidget):
     def set_comparison_store(self, store: AnnotationStore | None) -> None:
         """Set an optional read-only comparison store for overlay rendering."""
         self._comparison_store = store
+        if store is None:
+            self._matched_episode_store = None
+            self._matched_episode_label = "M"
+        self._ensure_active_overlay_target()
+        self.update()
+
+    def set_matched_episode_store(
+        self,
+        store: AnnotationStore | None,
+        label: str = "M",
+    ) -> None:
+        """Set an optional derived matched-episode store for comparison mode."""
+        self._matched_episode_store = store
+        self._matched_episode_label = label
         self._ensure_active_overlay_target()
         self.update()
 
@@ -391,25 +396,18 @@ class AnnotationLanes(QWidget):
         self.snap_point_modified.emit()
         self.update()
 
-    def _get_level_for_label(self, label: str) -> int:
-        """Find the lane level for a given label from config."""
-        for lane in self.config.lanes:
-            if label in lane["labels"]:
-                return lane["level"]
-        return 0  # Not found
-
     def _lane_name_to_level(self, lane_name: str) -> int | None:
         """Resolve lane name to configured level."""
-        lane = self.config.get_lane_by_name(lane_name)
-        return lane["level"] if lane else None
+        lane = self.schema.get_lane(lane_name)
+        return lane.level if lane else None
 
     def _level_to_lane_name(self, level: int) -> str | None:
-        lane = self.config.get_lane_config(level)
-        return str(lane["name"]) if lane else None
+        lane = self.schema.get_lane_by_level(level)
+        return lane.name if lane else None
 
     def _ensure_active_overlay_target(self) -> None:
         visible_levels = [
-            item["lane"]["level"]
+            item["lane"].level
             for item in self._display_items()
             if item["kind"] == "lane"
         ]
@@ -446,7 +444,16 @@ class AnnotationLanes(QWidget):
     def _lane_sources(self, level: int) -> list[str]:
         """Ordered unique sources in this lane: manual first, remainder alphabetical."""
         if self._comparison_mode_active():
-            return [SESSION_A_SOURCE, COMPARISON_SOURCE]
+            sources = [SESSION_A_SOURCE, COMPARISON_SOURCE]
+            if (
+                self._matched_episode_store is not None
+                and any(
+                    self._lane_name_to_level(ann.lane) == level
+                    for ann in self._matched_episode_store.annotations.values()
+                )
+            ):
+                sources.append(MATCHED_MODE_SOURCE)
+            return sources
 
         if not self._store:
             sources = ["manual"]
@@ -486,18 +493,8 @@ class AnnotationLanes(QWidget):
             return "manual"
         if source == COMPARISON_SOURCE:
             return "B"
-        if source.startswith("model:"):
-            return source[len("model:") :]
-        if source.startswith("rater:"):
-            return source[len("rater:") :]
-        return source
-
-    @staticmethod
-    def _display_source_name(source: str | None) -> str:
-        if not source:
-            return "all"
-        if source == "manual":
-            return "manual"
+        if source == MATCHED_MODE_SOURCE:
+            return self._matched_episode_label
         if source.startswith("model:"):
             return source[len("model:") :]
         if source.startswith("rater:"):
@@ -512,21 +509,21 @@ class AnnotationLanes(QWidget):
     def _display_items(self) -> list[dict]:
         items: list[dict] = []
         grouped_lanes = set()
-        for group in self.config.groups:
+        for group in self.schema.groups:
             grouped_lanes.update(group["lanes"])
 
-        for lane in self.config.lanes:
-            if lane["level"] in grouped_lanes:
+        for lane in self.schema.lanes:
+            if lane.level in grouped_lanes:
                 continue
-            if not self._should_show_lane(lane["name"]):
+            if not self._should_show_lane(lane.name):
                 continue
             items.append({"kind": "lane", "lane": lane, "is_child": False})
 
-        for group in self.config.groups:
+        for group in self.schema.groups:
             child_items = []
             for level in group["lanes"]:
-                lane = self.config.get_lane_config(level)
-                if lane and self._should_show_lane(lane["name"]):
+                lane = self.schema.get_lane_by_level(level)
+                if lane and self._should_show_lane(lane.name):
                     child_items.append({"kind": "lane", "lane": lane, "is_child": True})
             if not child_items:
                 continue
@@ -537,11 +534,23 @@ class AnnotationLanes(QWidget):
 
         return items
 
+    def _display_rows(self):
+        """Yield display items with their vertical origin and height."""
+        current_y = RULER_HEIGHT
+        for item in self._display_items():
+            if item["kind"] == "group_header":
+                yield item, current_y, HEADER_HEIGHT
+                current_y += HEADER_HEIGHT
+                continue
+            lane_height = self._lane_total_height(item["lane"].level)
+            yield item, current_y, lane_height
+            current_y += lane_height
+
     def _get_lane_color(self, level: int) -> str:
         """Resolve configured lane color by level."""
-        for lane in self.config.lanes:
-            if lane["level"] == level:
-                return lane["color"]
+        for lane in self.schema.lanes:
+            if lane.level == level:
+                return lane.color
         return COLOR_TEXT_MUTED
 
     def _comparison_mode_active(self) -> bool:
@@ -586,6 +595,9 @@ class AnnotationLanes(QWidget):
             return SESSION_A_SOURCE
         return source or "manual"
 
+    def _primary_track_editable(self) -> bool:
+        return not self._comparison_mode_active()
+
     def _annotation_translucent(self, ann_id: str, *, comparison: bool) -> bool:
         if not self._comparison_mode_active():
             return False
@@ -598,8 +610,8 @@ class AnnotationLanes(QWidget):
         return False
 
     def _lane_is_point(self, level: int) -> bool:
-        lane = self.config.get_lane_config(level)
-        return bool(lane and lane.get("lane_type", "interval") == "point")
+        lane = self.schema.get_lane_by_level(level)
+        return bool(lane and lane.lane_type == "point")
 
     def _snap_to_nearest(self, time_ms: float) -> float:
         """Snap time to nearest snap point if within threshold."""
@@ -643,37 +655,19 @@ class AnnotationLanes(QWidget):
         if y < RULER_HEIGHT:
             return None
 
-        current_y = RULER_HEIGHT
-
-        for item in self._display_items():
-            if item["kind"] == "group_header":
-                if current_y <= y < current_y + HEADER_HEIGHT:
-                    return None
-                current_y += HEADER_HEIGHT
+        for item, row_y, row_height in self._display_rows():
+            if not (row_y <= y < row_y + row_height):
                 continue
-
-            lane = item["lane"]
-            lane_height = self._lane_total_height(lane["level"])
-            if current_y <= y < current_y + lane_height:
-                return lane["level"]
-            current_y += lane_height
-
+            if item["kind"] == "group_header":
+                return None
+            return item["lane"].level
         return None
 
     def _lane_y(self, level: int) -> int:
         """Get y coordinate for a lane level."""
-        current_y = RULER_HEIGHT
-
-        for item in self._display_items():
-            if item["kind"] == "group_header":
-                current_y += HEADER_HEIGHT
-                continue
-
-            lane = item["lane"]
-            if lane["level"] == level:
-                return current_y
-            current_y += self._lane_total_height(lane["level"])
-
+        for item, row_y, _row_height in self._display_rows():
+            if item["kind"] == "lane" and item["lane"].level == level:
+                return row_y
         return -100  # Not found or hidden
 
     # --- Painting ---
@@ -695,6 +689,11 @@ class AnnotationLanes(QWidget):
         # Draw swimlanes
         self._draw_lanes(painter, width)
 
+        # Constrain time-based overlays to the scrollable content area so they never
+        # paint over the lane labels on the left.
+        painter.save()
+        painter.setClipRect(self._label_width, 0, max(0, width - self._label_width), height)
+
         # Draw loop region behind annotations
         self._draw_loop_region(painter, height)
 
@@ -702,6 +701,7 @@ class AnnotationLanes(QWidget):
         if self._store:
             self._draw_annotations(painter)
         self._draw_comparison_annotations(painter)
+        self._draw_matched_episode_annotations(painter)
 
         # Draw drag preview
         if self._is_dragging and self._drag_lane is not None:
@@ -712,6 +712,7 @@ class AnnotationLanes(QWidget):
 
         # Draw playhead
         self._draw_playhead(painter, height)
+        painter.restore()
 
         painter.end()
 
@@ -736,18 +737,14 @@ class AnnotationLanes(QWidget):
 
     def _draw_lanes(self, painter: QPainter, width: int) -> None:
         """Draw swimlane backgrounds, labels, and group headers."""
-        current_y = RULER_HEIGHT
-        for item in self._display_items():
+        for item, row_y, _row_height in self._display_rows():
             if item["kind"] == "group_header":
                 collapsed = self._group_state.get(item["name"], False)
-                self._draw_group_header(painter, width, current_y, item["name"], collapsed)
-                current_y += HEADER_HEIGHT
+                self._draw_group_header(painter, width, row_y, item["name"], collapsed)
                 continue
 
             lane = item["lane"]
-            lane_height = self._lane_total_height(lane["level"])
-            self._draw_single_lane(painter, width, current_y, lane, is_child=item["is_child"])
-            current_y += lane_height
+            self._draw_single_lane(painter, width, row_y, lane, is_child=item["is_child"])
 
     def _draw_group_header(
         self, painter: QPainter, width: int, y: int, name: str, collapsed: bool
@@ -780,17 +777,17 @@ class AnnotationLanes(QWidget):
         painter.restore()
 
     def _draw_single_lane(
-        self, painter: QPainter, width: int, y: int, lane: dict, is_child: bool = False
+        self, painter: QPainter, width: int, y: int, lane: LaneSchema, is_child: bool = False
     ) -> None:
         """Helper to draw a single lane."""
-        lane_height = self._lane_total_height(lane["level"])
+        lane_height = self._lane_total_height(lane.level)
 
         # Alternating background (simplified)
         bg_color = COLOR_TIMELINE_ROW_BG
         painter.fillRect(0, y, width, lane_height, QColor(bg_color))
         if self._comparison_mode_active():
-            tint = QColor(lane["color"])
-            tint.setAlpha(32 if self._lane_has_comparison_diff(lane["name"]) else 18)
+            tint = QColor(lane.color)
+            tint.setAlpha(32 if self._lane_has_comparison_diff(lane.name) else 18)
             painter.fillRect(self._label_width, y, width - self._label_width, lane_height, tint)
 
         # Label background
@@ -798,7 +795,7 @@ class AnnotationLanes(QWidget):
         painter.fillRect(0, y, self._label_width, lane_height, QColor(label_bg))
 
         # Lane label
-        lane_is_active = lane["level"] == self._active_overlay_level
+        lane_is_active = lane.level == self._active_overlay_level
         label_color = COLOR_TEXT_STRONG if lane_is_active else COLOR_TEXT_SUBTLE
         painter.setPen(QPen(QColor(label_color), 1))
 
@@ -809,7 +806,7 @@ class AnnotationLanes(QWidget):
         if not self._comparison_mode_active():
             indent = 20 if is_child else 8
             label_text = painter.fontMetrics().elidedText(
-                str(lane["name"]),
+                lane.name,
                 Qt.TextElideMode.ElideRight,
                 max(8, self._label_width - indent - 8),
             )
@@ -819,7 +816,7 @@ class AnnotationLanes(QWidget):
         if lane_is_active:
             painter.fillRect(0, y, 4, lane_height, QColor(COLOR_ACCENT_MUTED))
 
-        for index, source in enumerate(self._lane_sources(lane["level"])):
+        for index, source in enumerate(self._lane_sources(lane.level)):
             sub_y = y + index * SUB_ROW_HEIGHT
             if index > 0:
                 painter.setPen(QPen(QColor(COLOR_BORDER), 1, Qt.PenStyle.DotLine))
@@ -932,6 +929,45 @@ class AnnotationLanes(QWidget):
                     color_override=COLOR_PENDING,
                     comparison=True,
                     translucent=self._annotation_translucent(ann.id, comparison=True),
+                )
+
+    def _draw_matched_episode_annotations(self, painter: QPainter) -> None:
+        """Draw derived matched-episode annotations in a dedicated overlay pass."""
+        if (
+            not self._show_comparison
+            or self._comparison_store is None
+            or self._matched_episode_store is None
+        ):
+            return
+
+        for ann in self._matched_episode_store.annotations.values():
+            level = self._lane_name_to_level(ann.lane)
+            if level is None:
+                continue
+            sub_row_top = self._sub_row_y(level, MATCHED_MODE_SOURCE)
+            sub_row_height = SUB_ROW_HEIGHT
+            if ann.event_type == "point":
+                self._draw_point_marker(
+                    painter,
+                    ann.id,
+                    ann.start_ms,
+                    level,
+                    ann.label,
+                    sub_row_top=sub_row_top,
+                    sub_row_height=sub_row_height,
+                    color_override=COLOR_ACCENT_MUTED,
+                )
+            else:
+                self._draw_annotation_bar(
+                    painter,
+                    ann.id,
+                    ann.start_ms,
+                    ann.end_ms,
+                    level,
+                    ann.label,
+                    bar_top=sub_row_top + 3,
+                    bar_height=sub_row_height - 6,
+                    color_override=COLOR_ACCENT_MUTED,
                 )
 
     def _draw_annotation_bar(
@@ -1307,17 +1343,14 @@ class AnnotationLanes(QWidget):
         # Check if clicking on lane label (for overlay toggle) OR group header
         if x < self._label_width and y >= RULER_HEIGHT:
             # Check if group header clicked
-            current_y = RULER_HEIGHT
-            for item in self._display_items():
-                if item["kind"] == "group_header":
-                    if current_y <= y < current_y + HEADER_HEIGHT:
-                        name = item["name"]
-                        self._group_state[name] = not self._group_state[name]
-                        self._recalculate_height()
-                        return
-                    current_y += HEADER_HEIGHT
+            for item, row_y, row_height in self._display_rows():
+                if item["kind"] != "group_header":
                     continue
-                current_y += self._lane_total_height(item["lane"]["level"])
+                if row_y <= y < row_y + row_height:
+                    name = item["name"]
+                    self._group_state[name] = not self._group_state[name]
+                    self._recalculate_height()
+                    return
 
             # Check for overlay level selection
             lane = self._y_to_lane(y)
@@ -1372,7 +1405,7 @@ class AnnotationLanes(QWidget):
 
         # Check if clicking on an annotation edge
         edge_hit = self._hit_test_annotation_edge(x, y)
-        if edge_hit:
+        if edge_hit and self._primary_track_editable():
             self._drag_ann_id, self._drag_edge = edge_hit
             self.select_annotation(self._drag_ann_id)
             return
@@ -1388,7 +1421,7 @@ class AnnotationLanes(QWidget):
 
         # Start drag-to-create
         lane = self._y_to_lane(y)
-        if lane is not None and x >= self._label_width:
+        if lane is not None and x >= self._label_width and self._primary_track_editable():
             if self._lane_is_point(lane):
                 time_ms = self._snap_to_nearest(self._x_to_time(x))
                 self.annotation_created.emit(lane, time_ms, time_ms)
@@ -1406,7 +1439,7 @@ class AnnotationLanes(QWidget):
             return
 
         clicked_id = self._hit_test_annotation(event.position().x(), event.position().y())
-        if clicked_id and self._store:
+        if clicked_id and self._store and self._primary_track_editable():
             ann = self._store.get(clicked_id)
             if ann is not None and ann.ghost:
                 self.select_annotation(clicked_id)
@@ -1445,7 +1478,7 @@ class AnnotationLanes(QWidget):
             self.update()
             return
 
-        if self._drag_ann_id and self._drag_edge and self._store:
+        if self._drag_ann_id and self._drag_edge and self._store and self._primary_track_editable():
             new_time = max(0, min(self._duration_ms, self._x_to_time(x)))
             # Snap to nearest point except itself
             snapped_time = self._snap_to_nearest(new_time)
@@ -1496,11 +1529,7 @@ class AnnotationLanes(QWidget):
         # Hover effect for overlays
         hovered_id = self._hit_test_annotation(x, y)
         if hovered_id != self._last_hovered_id:
-            if self._last_hovered_id:
-                self.annotation_unhovered.emit(self._last_hovered_id)
-
             if hovered_id:
-                self.annotation_hovered.emit(hovered_id)
                 self._show_annotation_tooltip(hovered_id, event.globalPosition().toPoint())
             else:
                 QToolTip.hideText()
@@ -1532,7 +1561,7 @@ class AnnotationLanes(QWidget):
             self._drag_ann_id = None
             self._drag_edge = None
 
-        if self._is_dragging and self._drag_lane is not None:
+        if self._is_dragging and self._drag_lane is not None and self._primary_track_editable():
             # Calculate time range
             start_x = min(self._drag_start_x, self._drag_end_x)
             end_x = max(self._drag_start_x, self._drag_end_x)
@@ -1551,9 +1580,7 @@ class AnnotationLanes(QWidget):
             self.update()
 
     def leaveEvent(self, event) -> None:
-        if self._last_hovered_id:
-            self.annotation_unhovered.emit(self._last_hovered_id)
-            self._last_hovered_id = None
+        self._last_hovered_id = None
         QToolTip.hideText()
         super().leaveEvent(event)
 
@@ -1593,7 +1620,7 @@ class AnnotationLanes(QWidget):
                 self.update()
                 return
 
-            if self._selected_id and self._store:
+            if self._selected_id and self._store and self._primary_track_editable():
                 ann = self._store.get(self._selected_id)
                 if ann is None:
                     return
@@ -1722,18 +1749,18 @@ class AnnotationLanes(QWidget):
         view_duration = max(1.0, self._view_end_ms - self._view_start_ms)
         threshold_ms = (POINT_HIT_RADIUS / max(1, self.width() - self._label_width)) * view_duration
 
-        lane_cfg = self.config.get_lane_config(lane)
-        if not lane_cfg:
+        lane_schema = self.schema.get_lane_by_level(lane)
+        if not lane_schema:
             return None
 
         annotations = (
             self._comparison_annotations(
                 self._store,
-                lane_cfg["name"],
+                lane_schema.name,
                 source=self._primary_source_filter,
             )
             if self._comparison_mode_active()
-            else self._store.get_by_lane(lane_cfg["name"])
+            else self._store.get_by_lane(lane_schema.name)
         )
         for ann in annotations:
             row_top = self._sub_row_y(lane, self._primary_row_source(ann.source))
@@ -1771,18 +1798,18 @@ class AnnotationLanes(QWidget):
         view_duration = max(1.0, self._view_end_ms - self._view_start_ms)
         threshold_ms = (threshold_px / max(1, self.width() - self._label_width)) * view_duration
 
-        lane_cfg = self.config.get_lane_config(lane)
-        if not lane_cfg:
+        lane_schema = self.schema.get_lane_by_level(lane)
+        if not lane_schema:
             return None
 
         annotations = (
             self._comparison_annotations(
                 self._store,
-                lane_cfg["name"],
+                lane_schema.name,
                 source=self._primary_source_filter,
             )
             if self._comparison_mode_active()
-            else self._store.get_by_lane(lane_cfg["name"])
+            else self._store.get_by_lane(lane_schema.name)
         )
 
         for ann in annotations:
@@ -1989,6 +2016,14 @@ class TimelineWidget(QWidget):
         """Set a read-only comparison store for overlay rendering."""
         self.lanes.set_comparison_store(store)
 
+    def set_matched_episode_store(
+        self,
+        store: AnnotationStore | None,
+        label: str = "M",
+    ) -> None:
+        """Set a derived matched-episode store for comparison mode."""
+        self.lanes.set_matched_episode_store(store, label)
+
     def set_show_comparison(self, visible: bool) -> None:
         """Toggle comparison overlay visibility."""
         self.lanes.set_show_comparison(visible)
@@ -2046,9 +2081,7 @@ class TimelineWidget(QWidget):
         self.lanes.snap_point_modified.connect(self._on_snap_modified)
         self.lanes.lane_header_context_requested.connect(self.lane_header_context_requested)
 
-        # 3. Highlighting
-        self.lanes.annotation_hovered.connect(self._on_hover_ann)
-        self.lanes.annotation_unhovered.connect(self._on_unhover_ann)
+        # 3. Overlay updates
         self.lanes.overlay_level_changed.connect(self._on_overlay_level_changed)
 
     def _on_lane_view_changed(self, start_ms: float, end_ms: float) -> None:
@@ -2095,24 +2128,33 @@ class TimelineWidget(QWidget):
         self.snap_point_modified.emit()
         self.signals.update_snap_lines(self.lanes.get_snap_points())
 
-    def _on_hover_ann(self, ann_id: str) -> None:
-        pass
-
-    def _on_unhover_ann(self, ann_id: str) -> None:
-        pass
-
     def _on_overlay_level_changed(self, level: int, source: str | None) -> None:
         """Handle change in active overlay target."""
         self._load_all_overlays()
 
     def _load_all_overlays(self) -> None:
         """Helper to load all annotations from the store as overlays."""
-        store = self.lanes._store
         self.lanes._ensure_active_overlay_target()
         active_level = self.lanes._active_overlay_level
         active_source = self.lanes._active_overlay_source
         self.signals.clear_overlays()
+        if active_source == MATCHED_MODE_SOURCE:
+            store = self.lanes._matched_episode_store
+            if not store:
+                return
+            for ann in store.annotations.values():
+                level = self.lanes._lane_name_to_level(ann.lane)
+                if level != active_level:
+                    continue
+                self.signals.add_overlay(
+                    ann.id,
+                    ann.start_ms / 1000.0,
+                    ann.end_ms / 1000.0,
+                    color=COLOR_ACCENT_MUTED,
+                )
+            return
 
+        store = self.lanes._store
         if not store:
             return
 
@@ -2123,8 +2165,8 @@ class TimelineWidget(QWidget):
             if self.lanes._primary_row_source(ann.source) != active_source:
                 continue
 
-            lane_cfg = self.lanes.config.get_lane_by_name(ann.lane) or {}
-            color = lane_cfg.get("color", COLOR_ACCENT_MUTED)
+            lane_schema = self.lanes.schema.get_lane(ann.lane)
+            color = lane_schema.color if lane_schema else COLOR_ACCENT_MUTED
             self.signals.add_overlay(ann.id, ann.start_ms / 1000.0, ann.end_ms / 1000.0, color=color)
 
     def refresh_overlays(self) -> None:

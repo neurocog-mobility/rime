@@ -11,7 +11,7 @@ from rime_core import ProtocolSchema, SchemaValidationError, suggest_next_schema
 def test_default_schema_loads() -> None:
     schema = ProtocolSchema.default()
 
-    assert schema.name == "FOG-COA"
+    assert schema.name == "GP-FOG"
     assert "FOG" in schema.get_lane_names()
     assert schema.get_default_label("FOG") == "FOG"
 

@@ -8,7 +8,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from rime_core.session import SignalConfig
+from rime_core.common.time import time_values_to_seconds
+from rime_core.sessions import SignalConfig
 
 
 def detect_signal_config(path: str | Path, sample_rows: int = 200) -> dict[str, object]:
@@ -100,15 +101,10 @@ class Signal:
                 f"Time column '{self.time_column}' not found. Available: {list(self.data.columns)}"
             )
 
-        time = self.data[self.time_column].to_numpy(dtype=np.float64)
-        if self.time_unit == "milliseconds":
-            time = time / 1_000.0
-        elif self.time_unit == "microseconds":
-            time = time / 1_000_000.0
-        elif self.time_unit == "nanoseconds":
-            time = time / 1_000_000_000.0
-        elif self.time_unit != "seconds":
-            raise ValueError(f"Unsupported time unit: {self.time_unit}")
+        time = time_values_to_seconds(
+            self.data[self.time_column].to_numpy(dtype=np.float64),
+            self.time_unit,
+        )
 
         time_ms = (time - time[0]) * 1000.0
         return time_ms + self.offset_ms
@@ -126,20 +122,7 @@ def load_csv_signal(
     path: str | Path,
     config: SignalConfig,
 ) -> Signal:
-    """
-    Load a CSV signal file.
-
-    Args:
-        path: Path to the CSV file.
-        config: Signal configuration from session manifest.
-
-    Returns:
-        Signal object with loaded data.
-
-    Raises:
-        FileNotFoundError: If file doesn't exist.
-        ValueError: If required columns are missing.
-    """
+    """Load one CSV-backed signal using the session manifest config."""
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Signal file not found: {path}")
@@ -152,12 +135,10 @@ def load_csv_signal(
             f"Available columns: {list(df.columns)}"
         )
 
-    # Determine channels (all columns except time if not specified)
     channels = config.channels
     if not channels:
         channels = [c for c in df.columns if c != config.time_column]
 
-    # Validate channels exist
     missing = [c for c in channels if c not in df.columns]
     if missing:
         raise ValueError(f"Channels not found in {path}: {missing}")

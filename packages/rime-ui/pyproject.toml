@@ -18,15 +18,20 @@ dependencies = [
     "pyqtgraph>=0.13",
     "qtawesome>=1.3",
     "duckdb>=0.9",
+    "opencv-contrib-python>=4.8",
 ]
 
 [project.optional-dependencies]
-video = [
-    "opencv-contrib-python>=4.8",
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.5",
 ]
 
 [project.scripts]
 rime = "rime_ui.app:main"
+
+[tool.hatch.build]
+ignore-vcs = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rime_ui"]

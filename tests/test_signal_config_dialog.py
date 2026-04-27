@@ -7,7 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication
 
-from rime_ui.signal_config_dialog import SignalConfigDialog
+from rime_ui.dialogs.signal_config_dialog import SignalConfigDialog
 
 
 def _app() -> QApplication:

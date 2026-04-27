@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 from rime_core.annotations import Annotation
 from rime_core.rule_engine import Violation
 from rime_core.schema import ProtocolSchema
-from rime_ui.label_dialog import LabelDialog
+from rime_ui.dialogs.label_dialog import LabelDialog
 
 
 def _app() -> QApplication:

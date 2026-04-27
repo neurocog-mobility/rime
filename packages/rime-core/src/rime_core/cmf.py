@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import inspect
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -16,6 +17,22 @@ import numpy as np
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class CMFRequirement:
+    """One declared Python dependency for a CMF package."""
+
+    package: str
+    import_name: str
+    install_hint: str
+
+
+@dataclass(frozen=True)
+class CMFMissingRequirement:
+    """A declared dependency that could not be imported in the current environment."""
+
+    requirement: CMFRequirement
 
 
 @dataclass
@@ -38,6 +55,7 @@ class CMFConfig:
     parameters: list[dict[str, Any]]
     labels: dict[str, Any]
     output_mappings: list[dict[str, str]]
+    requirements: list[CMFRequirement] = field(default_factory=list)
 
 
 @dataclass
@@ -54,17 +72,30 @@ class CMFPackage:
     def name(self) -> str:
         return self.config.name
 
+    def missing_requirements(self) -> list[CMFMissingRequirement]:
+        """Return declared dependencies that are not importable in the current environment."""
+        missing: list[CMFMissingRequirement] = []
+        for requirement in self.config.requirements:
+            try:
+                if importlib.util.find_spec(requirement.import_name) is None:
+                    missing.append(CMFMissingRequirement(requirement=requirement))
+            except (ImportError, ModuleNotFoundError, ValueError):
+                missing.append(CMFMissingRequirement(requirement=requirement))
+        return missing
+
     def predict(
         self,
         inputs: dict[str, Any],
         params: dict[str, Any] | None = None,
     ) -> dict[str, np.ndarray]:
         """Run inference with the underlying runtime."""
-        signature = inspect.signature(self._runner.predict)
+        runner = self._runner or CMFLoader._load_runner(self._model_dir, self.config)
+        self._runner = runner
+        signature = inspect.signature(runner.predict)
         if len(signature.parameters) >= 2:
-            outputs = self._runner.predict(inputs, params or {})
+            outputs = runner.predict(inputs, params or {})
         else:
-            outputs = self._runner.predict(inputs)
+            outputs = runner.predict(inputs)
         if not isinstance(outputs, dict):
             raise TypeError("CMF wrapper predict() must return a dict[str, np.ndarray]")
         return {name: np.asarray(value) for name, value in outputs.items()}
@@ -96,11 +127,10 @@ class CMFLoader:
             model_dir = CMFLoader._resolve_package_root(Path(temp_dir.name))
 
         config = CMFLoader._load_config(model_dir)
-        runner = CMFLoader._load_runner(model_dir, config)
         return CMFPackage(
             path=source_path,
             config=config,
-            _runner=runner,
+            _runner=None,
             _model_dir=model_dir,
             _temp_dir=temp_dir,
         )
@@ -248,6 +278,7 @@ class CMFLoader:
                     "label": entry["label"],
                 }
             )
+        requirements = CMFLoader._load_requirements(raw, config_path)
 
         entry_path = model_dir / runtime_entry
         if not entry_path.exists():
@@ -270,6 +301,7 @@ class CMFLoader:
             parameters=parameters,
             labels=labels,
             output_mappings=output_mappings,
+            requirements=requirements,
         )
 
     @staticmethod
@@ -346,3 +378,43 @@ class CMFLoader:
         if not isinstance(value, (int, float)):
             raise CMFValidationError(f"Missing or invalid '{key}' in {config_path}")
         return float(value)
+
+    @staticmethod
+    def _load_requirements(raw: dict[str, Any], config_path: Path) -> list[CMFRequirement]:
+        value = raw.get("requirements", [])
+        if value == []:
+            return []
+        if not isinstance(value, list):
+            raise CMFValidationError(f"'requirements' must be a list in {config_path}")
+
+        requirements: list[CMFRequirement] = []
+        for entry in value:
+            if not isinstance(entry, dict):
+                raise CMFValidationError(
+                    f"Each 'requirements' entry must be an object in {config_path}"
+                )
+            package = entry.get("package")
+            import_name = entry.get("import")
+            install_hint = entry.get("install_hint")
+            if not isinstance(package, str) or not package.strip():
+                raise CMFValidationError(
+                    f"'requirements' entry missing required key 'package' in {config_path}"
+                )
+            if not isinstance(import_name, str) or not import_name.strip():
+                raise CMFValidationError(
+                    f"'requirements' entry missing required key 'import' in {config_path}"
+                )
+            if install_hint is None:
+                install_hint = f"pip install {package}"
+            if not isinstance(install_hint, str) or not install_hint.strip():
+                raise CMFValidationError(
+                    f"'requirements' entry has invalid 'install_hint' in {config_path}"
+                )
+            requirements.append(
+                CMFRequirement(
+                    package=package,
+                    import_name=import_name,
+                    install_hint=install_hint,
+                )
+            )
+        return requirements

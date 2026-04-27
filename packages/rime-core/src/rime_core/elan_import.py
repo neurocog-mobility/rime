@@ -11,7 +11,7 @@ import pympi
 from rime_core.annotations import Annotation, AnnotationStore, generate_id
 from rime_core.rule_engine import RuleEngine, SideEffect, Violation
 from rime_core.schema import ProtocolSchema
-from rime_core.session import SignalConfig, Session, SessionProvenance, VideoConfig, create_session
+from rime_core.sessions import SignalConfig, Session, SessionProvenance, VideoConfig, create_session
 
 
 @dataclass

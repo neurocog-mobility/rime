@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from rime_core.session import SignalConfig
+from rime_core.sessions import SignalConfig
 from rime_core.signals import Signal, load_csv_signal
 
 

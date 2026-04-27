@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import subprocess
 
@@ -9,7 +10,14 @@ import pytest
 from rime_core import (
     Annotation,
     AnnotationStore,
+    BidsSignalInput,
+    SignalConfig,
+    bids_session_paths,
+    export_bids_dataset,
+    export_bids_events,
+    export_bids_motion,
     compute_irr,
+    derive_matched_episode_interval,
     ExportError,
     ExporterRegistry,
     ClinicalMetricSpec,
@@ -20,11 +28,12 @@ from rime_core import (
     WorkingContext,
     create_session,
     export_irr_report,
+    export_matched_episode_parquet,
     export_signal_clips,
     export_video_clips,
     export_session_report,
 )
-from rime_core.export import _find_ffmpeg
+from rime_core.io.exporters import _find_ffmpeg
 
 
 def _make_store() -> AnnotationStore:
@@ -65,6 +74,7 @@ def _make_session(tmp_path: Path):
         provenance=SessionProvenance(origin="manual"),
     )
     session.rater = "AZ"
+    session.provenance.recording_relative_timing_verified = True
     return session
 
 
@@ -155,6 +165,66 @@ def test_export_parquet_includes_provenance_columns(
     assert row["origin_end_ms"] == 240.0
 
 
+def test_derive_matched_episode_interval_supports_export_modes() -> None:
+    ann_a = Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0)
+    ann_b = Annotation(id="b1", lane="FOG", label="FOG", start_ms=120.0, end_ms=280.0)
+
+    assert derive_matched_episode_interval(ann_a, ann_b, "average") == (110.0, 290.0)
+    assert derive_matched_episode_interval(ann_a, ann_b, "intersection") == (120.0, 280.0)
+    assert derive_matched_episode_interval(ann_a, ann_b, "union") == (100.0, 300.0)
+    assert derive_matched_episode_interval(ann_a, ann_b, "rater_a") == (100.0, 300.0)
+    assert derive_matched_episode_interval(ann_a, ann_b, "rater_b") == (120.0, 280.0)
+
+
+def test_export_matched_episode_parquet_uses_selected_mode_and_provenance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_to_parquet(self: pd.DataFrame, path: Path, index: bool = False) -> None:
+        captured["path"] = path
+        captured["index"] = index
+        captured["frame"] = self.copy()
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", fake_to_parquet)
+    session_a = _make_session(tmp_path)
+    session_a.name = "Session A"
+    session_b = _make_session(tmp_path)
+    session_b.name = "Session B"
+    store_a = AnnotationStore()
+    store_a.add(Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0))
+    store_b = AnnotationStore()
+    store_b.add(Annotation(id="b1", lane="FOG", label="FOG", start_ms=120.0, end_ms=280.0))
+    result = compute_irr(store_a, store_b, 1000.0, lane="FOG", frame_resolution_ms=100.0)
+    output_path = tmp_path / "matched-average.parquet"
+
+    export_matched_episode_parquet(
+        result,
+        session_a,
+        session_b,
+        output_path,
+        lane="FOG",
+        source_a="manual",
+        source_b="manual",
+        mode="average",
+    )
+
+    frame = captured["frame"]
+    row = frame.iloc[0]
+    assert captured["path"] == output_path
+    assert captured["index"] is False
+    assert row["matched_episode_mode"] == "average"
+    assert row["source"] == "matched:average"
+    assert row["start_ms"] == 110.0
+    assert row["end_ms"] == 290.0
+    assert row["annotation_a_id"] == "a1"
+    assert row["annotation_b_id"] == "b1"
+    assert row["session_a_name"] == "Session A"
+    assert row["session_b_name"] == "Session B"
+    assert row["episode_iou"] == 0.8
+
+
 def test_exporter_registry_can_include_ghost_annotations(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -209,6 +279,205 @@ def test_export_includes_point_event_type(tmp_path: Path, monkeypatch: pytest.Mo
     frame = captured["frame"]
     assert frame.iloc[0]["event_type"] == "point"
     assert frame.iloc[0]["duration_ms"] == 0.0
+
+
+def test_exporter_registry_dispatches_bids_events(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_to_csv(
+        self: pd.DataFrame,
+        path: Path,
+        sep: str = "\t",
+        index: bool = False,
+        na_rep: str = "n/a",
+    ) -> None:
+        captured["path"] = path
+        captured["frame"] = self.copy()
+        captured["sep"] = sep
+        captured["index"] = index
+        captured["na_rep"] = na_rep
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", fake_to_csv)
+    registry = ExporterRegistry.default()
+    store = AnnotationStore()
+    store.add(
+        Annotation(id="late", lane="FOG", label="FOG", start_ms=2000.0, end_ms=2500.0, source="manual")
+    )
+    store.add(
+        Annotation(id="early", lane="FOG", label="FOG", start_ms=500.0, end_ms=500.0, event_type="point")
+    )
+
+    registry.export("bids", store, _make_session(tmp_path), tmp_path / "sub-S001_events.tsv")
+
+    frame = captured["frame"]
+    assert captured["path"] == tmp_path / "sub-S001_events.tsv"
+    assert captured["sep"] == "\t"
+    assert captured["index"] is False
+    assert captured["na_rep"] == "n/a"
+    assert list(frame.columns) == [
+        "onset",
+        "duration",
+        "trial_type",
+        "rime_lane",
+        "rime_event_type",
+        "rime_source",
+        "rime_rater",
+        "rime_human_modified",
+        "rime_confidence",
+        "rime_origin_onset",
+        "rime_origin_offset",
+        "rime_origin_confidence",
+        "rime_annotation_id",
+    ]
+    assert list(frame["rime_annotation_id"]) == ["early", "late"]
+    assert list(frame["duration"]) == [0.0, 0.5]
+
+
+def test_export_bids_events_sidecar_documents_rule_auto_create(tmp_path: Path) -> None:
+    from rime_core import export_bids_events_sidecar
+
+    output_path = tmp_path / "sub-S001_events.json"
+    export_bids_events_sidecar(output_path)
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert "rule:auto_create" in payload["rime_source"]["Levels"]
+
+
+def test_export_bids_events_blocks_when_timing_not_verified(tmp_path: Path) -> None:
+    session = _make_session(tmp_path)
+    session.provenance.recording_relative_timing_verified = False
+
+    with pytest.raises(ExportError, match="recording-relative annotation timing"):
+        export_bids_events(_make_store(), session, tmp_path / "events.tsv")
+
+
+def test_export_bids_dataset_writes_raw_and_derivative_layout(tmp_path: Path) -> None:
+    session = _make_session(tmp_path)
+    session.id = "ses-session_01"
+    session.subject = SubjectInfo(id="sub-Subject 01", condition="PD")
+    session.signals = [
+        SignalConfig(
+            path="device-C7_sub-001_group-FR_ses-01_state-on_task-stwalk_sensor-15488.csv",
+            name="device-C7_sub-001_group-FR_ses-01_state-on_task-stwalk_sensor-15488",
+            type="imu",
+            format="csv",
+            sampling_rate_hz=2.0,
+            time_column="time",
+            channels=["acc_x", "acc_y"],
+        )
+    ]
+    store = AnnotationStore()
+    store.add(
+        Annotation(id="fog-1", lane="FOG", label="FOG", start_ms=1000.0, end_ms=2000.0, source="manual")
+    )
+    store.add(
+        Annotation(
+            id="step-1",
+            lane="Steps",
+            label="step",
+            start_ms=1500.0,
+            end_ms=1500.0,
+            event_type="point",
+            source="manual",
+        )
+    )
+    signal = Signal(
+        name="imu",
+        data=pd.DataFrame(
+            {
+                "time": [0.0, 0.5, 1.0, 1.5, 2.0],
+                "acc_x": [1, 2, 3, 4, 5],
+                "acc_y": [5, 4, 3, 2, 1],
+            }
+        ),
+        sampling_rate_hz=2.0,
+        time_column="time",
+        channels=["acc_x", "acc_y"],
+    )
+
+    written = export_bids_dataset(
+        store,
+        session,
+        [signal],
+        tmp_path / "bids",
+        padding_ms=500.0,
+    )
+
+    paths = bids_session_paths(tmp_path / "bids", session)
+    assert written >= 11
+    assert (tmp_path / "bids" / "dataset_description.json").exists()
+    assert (tmp_path / "bids" / "derivatives" / "rime" / "dataset_description.json").exists()
+    assert (tmp_path / "bids" / "participants.tsv").exists()
+    assert (tmp_path / "bids" / "participants.json").exists()
+    assert paths.events_tsv.exists()
+    assert paths.events_json.exists()
+    assert paths.events_tsv.as_posix().endswith("sub-Subject-01/ses-session-01/beh/sub-Subject-01_ses-session-01_task-fog_events.tsv")
+    assert paths.motion_tsv("sensor-15488").exists()
+    assert paths.motion_json("sensor-15488").exists()
+    assert paths.channels_tsv("sensor-15488").exists()
+    assert paths.clips_parquet("sensor-15488").exists()
+    assert paths.clips_json("sensor-15488").exists()
+
+    events = pd.read_csv(paths.events_tsv, sep="\t")
+    assert list(events["rime_annotation_id"]) == ["fog-1", "step-1"]
+    assert list(events["duration"]) == [1.0, 0.0]
+
+    dataset_description = json.loads(
+        (tmp_path / "bids" / "dataset_description.json").read_text(encoding="utf-8")
+    )
+    assert dataset_description["GeneratedBy"][0]["Version"] == "0.1.0"
+
+    participants = pd.read_csv(tmp_path / "bids" / "participants.tsv", sep="\t")
+    assert list(participants.columns) == ["participant_id", "condition"]
+    assert participants.iloc[0]["participant_id"] == "sub-Subject-01"
+    assert participants.iloc[0]["condition"] == "PD"
+
+    motion_text = paths.motion_tsv("sensor-15488").read_text(encoding="utf-8").splitlines()
+    assert motion_text[0] == "1\t5"
+    channels = pd.read_csv(paths.channels_tsv("sensor-15488"), sep="\t")
+    assert list(channels.columns) == ["name", "component", "type", "tracked_point", "units"]
+    assert list(channels["type"]) == ["ACCEL", "ACCEL"]
+
+    clips = pd.read_parquet(paths.clips_parquet("sensor-15488"))
+    assert list(clips.columns) == ["annotation_id", "time_offset", "acc_x", "acc_y"]
+    assert set(clips["annotation_id"]) == {"fog-1"}
+
+
+def test_export_bids_motion_writes_headerless_tsv_and_channels(tmp_path: Path) -> None:
+    session = _make_session(tmp_path)
+    session.signals = [
+        SignalConfig(
+            path="imu.csv",
+            name="Lumbar IMU",
+            type="imu",
+            format="csv",
+            sampling_rate_hz=2.0,
+            time_column="time",
+            channels=["acc_x", "gyro_z"],
+        )
+    ]
+    signal = Signal(
+        name="imu",
+        data=pd.DataFrame({"time": [0.0, 0.5], "acc_x": [1.0, 2.0], "gyro_z": [0.1, 0.2]}),
+        sampling_rate_hz=2.0,
+        time_column="time",
+        channels=["acc_x", "gyro_z"],
+    )
+
+    written = export_bids_motion(
+        session,
+        [BidsSignalInput(session.signals[0], signal, "Lumbar-IMU")],
+        tmp_path / "bids",
+    )
+
+    paths = bids_session_paths(tmp_path / "bids", session)
+    assert written == 3
+    assert paths.motion_tsv("Lumbar-IMU").read_text(encoding="utf-8").splitlines()[0] == "1.000000\t0.100000"
+    channels = pd.read_csv(paths.channels_tsv("Lumbar-IMU"), sep="\t")
+    assert list(channels["type"]) == ["ACCEL", "GYRO"]
 
 
 def test_exporter_registry_raises_for_unknown_format(tmp_path: Path) -> None:
@@ -361,16 +630,19 @@ def test_export_signal_clips_splits_large_exports_by_annotation_chunk(
 
 
 def test_export_video_clips_raises_without_ffmpeg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("rime_core.export.shutil.which", lambda name: None)
-    monkeypatch.setattr("rime_core.export.os.access", lambda path, mode: False)
+    monkeypatch.setattr("rime_core.io.exporters.shutil.which", lambda name: None)
+    monkeypatch.setattr("rime_core.io.exporters.os.access", lambda path, mode: False)
 
     with pytest.raises(ExportError, match="ffmpeg not found on PATH"):
         export_video_clips(_make_store(), _make_session(tmp_path), tmp_path / "exports")
 
 
 def test_find_ffmpeg_uses_homebrew_fallback_when_path_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("rime_core.export.shutil.which", lambda name: None)
-    monkeypatch.setattr("rime_core.export.os.access", lambda path, mode: str(path) == "/opt/homebrew/bin/ffmpeg")
+    monkeypatch.setattr("rime_core.io.exporters.shutil.which", lambda name: None)
+    monkeypatch.setattr(
+        "rime_core.io.exporters.os.access",
+        lambda path, mode: str(path) == "/opt/homebrew/bin/ffmpeg",
+    )
 
     class _FakePath:
         def __init__(self, value: str) -> None:
@@ -383,7 +655,7 @@ def test_find_ffmpeg_uses_homebrew_fallback_when_path_missing(monkeypatch: pytes
             return self._value
 
     monkeypatch.setattr(
-        "rime_core.export._FFMPEG_FALLBACK_PATHS",
+        "rime_core.io.exporters._FFMPEG_FALLBACK_PATHS",
         (_FakePath("/opt/homebrew/bin/ffmpeg"), _FakePath("/usr/local/bin/ffmpeg")),
     )
 
@@ -399,8 +671,8 @@ def test_export_video_clips_runs_ffmpeg_for_interval_annotations(
     def fake_run(cmd: list[str], check: bool, stdout, stderr) -> None:
         calls.append(cmd)
 
-    monkeypatch.setattr("rime_core.export.shutil.which", lambda name: "/usr/bin/ffmpeg")
-    monkeypatch.setattr("rime_core.export.subprocess.run", fake_run)
+    monkeypatch.setattr("rime_core.io.exporters.shutil.which", lambda name: "/usr/bin/ffmpeg")
+    monkeypatch.setattr("rime_core.io.exporters.subprocess.run", fake_run)
     session = _make_session(tmp_path)
     session.videos = [
         VideoConfig(path="video.mp4", role="primary", offset_ms=100.0),
@@ -458,8 +730,8 @@ def test_export_video_clips_wraps_ffmpeg_failures(
     def fake_run(cmd: list[str], check: bool, stdout, stderr) -> None:
         raise subprocess.CalledProcessError(returncode=1, cmd=cmd)
 
-    monkeypatch.setattr("rime_core.export.shutil.which", lambda name: "/usr/bin/ffmpeg")
-    monkeypatch.setattr("rime_core.export.subprocess.run", fake_run)
+    monkeypatch.setattr("rime_core.io.exporters.shutil.which", lambda name: "/usr/bin/ffmpeg")
+    monkeypatch.setattr("rime_core.io.exporters.subprocess.run", fake_run)
     session = _make_session(tmp_path)
     store = AnnotationStore()
     store.add(
@@ -556,6 +828,8 @@ def test_export_irr_report_writes_summary_and_per_label_sections(tmp_path: Path)
     assert "# Source A:\t(all accepted sources)" in content
     assert "# Source B:\t(all accepted sources)" in content
     assert "Metric\tValue" in content
+    assert "Match rate\t100.0%" in content
     assert "Matched episodes\t1" in content
-    assert "Label\tκ\t% Agreement\tEpisode IoU\tMatched\tA-only\tB-only" in content
-    assert "FOG\t1.00\t100.0\t0.80\t1\t0\t0" in content
+    assert "Set IoU\t80.0%" in content
+    assert "Label\tκ\tMatch rate\tSet IoU\tMatched\tA-only\tB-only" in content
+    assert "FOG\t1.00\t100.0%\t80.0%\t1\t0\t0" in content

@@ -9,8 +9,8 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from rime_core.annotations import Annotation
-from rime_ui.overview_strip import OverviewStrip
-from rime_ui.signals import SignalTrackWidget
+from rime_ui.widgets.overview_strip import OverviewStrip
+from rime_ui.widgets.signals import SignalTrackWidget
 
 
 def _app() -> QApplication:

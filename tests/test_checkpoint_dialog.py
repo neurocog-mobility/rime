@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 from rime_core.checkpoints import CheckpointEntry
-from rime_ui.checkpoint_dialog import RestoreCheckpointDialog
+from rime_ui.dialogs.checkpoint_dialog import RestoreCheckpointDialog
 
 
 def _app() -> QApplication:

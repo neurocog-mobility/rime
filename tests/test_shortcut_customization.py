@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication
 
 from rime_core.annotations import Annotation, AnnotationStore
 from rime_core.settings import AppSettings
-from rime_ui.main_window import RimeMainWindow
+from rime_ui.windows.main_window import RimeMainWindow
 
 
 def _app() -> QApplication:

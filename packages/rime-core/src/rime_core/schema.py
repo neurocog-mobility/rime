@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_SCHEMA_PATH = Path(__file__).parent / "config" / "schema.json"
+DEFAULT_SCHEMA_PATH = Path(__file__).parent / "config" / "gpfog_schema.json"
 NOTES_ONLY_SCHEMA_PATH = Path(__file__).parent / "config" / "notes_only_schema.json"
 
 
@@ -123,7 +123,7 @@ class ProtocolSchema:
 
     @classmethod
     def default(cls) -> ProtocolSchema:
-        """Return the built-in FOG-COA schema."""
+        """Return the built-in GP-FOG schema."""
         return cls.load(DEFAULT_SCHEMA_PATH)
 
     def to_dict(self) -> dict[str, Any]:

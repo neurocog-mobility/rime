@@ -9,7 +9,7 @@ from PySide6 import QtWidgets
 from PySide6.QtWidgets import QApplication, QLabel, QTableWidget
 
 from rime_core.cmf import CMFLoader
-from rime_ui.model_loader_dialog import ModelLoaderDialog
+from rime_ui.dialogs.model_loader_dialog import ModelLoaderDialog
 
 from test_cmf import _write_wrapper_package
 
@@ -67,12 +67,13 @@ def test_model_loader_dialog_uses_tabs_and_empty_placeholders(tmp_path: Path) ->
 
     assert dialog.minimumWidth() == 640
     assert dialog.minimumHeight() == 480
-    assert dialog.tabs.count() == 4
+    assert dialog.tabs.count() == 5
     assert [dialog.tabs.tabText(i) for i in range(dialog.tabs.count())] == [
         "Inputs",
         "Outputs",
         "Mappings",
         "Parameters",
+        "Requirements",
     ]
     assert dialog.load_button.isDefault() is True
 

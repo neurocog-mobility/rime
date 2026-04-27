@@ -1,64 +1,80 @@
 # RIME
 
-> **Multimodal (Video + Signals) Annotator with Smart Copilot for Parkinson's Disease Research**
+RIME is a multimodal annotation toolkit for Parkinson's disease research. It combines a headless core package for sessions, schemas, annotation logic, import/export, and model orchestration with a Qt desktop application for interactive review and labeling.
+
+## Repository Layout
+
+This repo is organized as two installable Python packages:
+
+- `packages/rime-core`: headless library published as `neurocog-rime-core`
+- `packages/rime-ui`: Qt desktop app published as `neurocog-rime-ui`
+
+The old monolithic `src/rime/core` and `src/rime/ui` layout no longer exists.
+
+## Install For Development
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e packages/rime-core
+pip install -e packages/rime-ui
+```
+
+If you want optional extras:
+
+```bash
+pip install -e "packages/rime-core[onnx,video]"
+pip install -e "packages/rime-ui[docs]"
+```
+
+## Launch The App
+
+```bash
+rime
+python -m rime_ui
+```
+
+Open a session directly:
+
+```bash
+rime --open /path/to/session.json
+rime --open /path/to/session.json --compare /path/to/comparison_session.json
+rime --open /path/to/session.json --model /path/to/model.rime
+```
 
 ## Quick Start
 
-```bash
-# Create virtual environment (already done)
-python -m venv .venv
-source .venv/bin/activate
+1. Install both packages in editable mode.
+2. Launch `rime`.
+3. Create or open a session.
+4. Load a protocol schema and media/signals as needed.
+5. Annotate in the UI, review pending ghost annotations, and export reports or datasets.
 
-# Install in development mode
-pip install -e .
+## Core Package Overview
 
-# Launch the application
-rime
-# or: python -m rime
+`rime_core` is grouped into a few focused areas:
 
-# Launch and open a session directly
-rime --open sample-data/ses-01/session.json
-# or: python -m rime --open sample-data/ses-01/session.json
-```
-
-## Open Sample Session
-
-1. Launch RIME
-2. File → Open Session (Ctrl+O)
-3. Navigate to `sample-data/ses-01/session.json`
-
-## Project Structure
-
-```
-rime/
-├── src/rime/
-│   ├── core/           # Data models (Session, Signal, Annotations)
-│   ├── ui/             # PySide6 widgets (MainWindow, Timeline, Player)
-│   └── app.py          # Application entry point
-├── sample-data/        # Example sessions
-└── docs/               # Specifications
-```
-
-## v0.1 Features
-
-- [x] Session loading (session.json manifest)
-- [x] CSV signal loading with time unit conversion
-- [x] L1-L5 annotation hierarchy
-- [x] Basic video player with playback controls
-- [x] Timeline widget (stub with swimlane placeholders)
-- [ ] Signal plotting
-- [ ] Multi-view video sync
-- [ ] CMF model loading
+- `rime_core.annotation`: annotations, rule engine, review helpers
+- `rime_core.analysis`: coverage, IRR, evaluation
+- `rime_core.io`: import/export and signal-loading helpers
+- `rime_core.modeling`: CMF package loading and inference
+- `rime_core.sessions`: session models and persistence
+- `rime_core.workspace`: live working-session orchestration
 
 ## Development
 
+Run the test suite from the repo root with both package source trees on `PYTHONPATH`:
+
 ```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Format code
-ruff format src/
+PYTHONPATH=packages/rime-core/src:packages/rime-ui/src .venv/bin/pytest
 ```
+
+Build docs locally:
+
+```bash
+mkdocs serve
+```
+
+## Docs
+
+Project documentation lives in [`docs/`](docs/) and is configured with [`mkdocs.yml`](mkdocs.yml).

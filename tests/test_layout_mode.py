@@ -9,9 +9,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 from rime_core.annotations import AnnotationStore
-from rime_core.context import WorkingContext
-from rime_core.session import VideoConfig
-from rime_ui.main_window import LayoutMode, RimeMainWindow
+from rime_core.sessions import VideoConfig
+from rime_core.workspace import WorkingContext
+from rime_ui.windows.main_window import LayoutMode, RimeMainWindow
 
 
 def _app() -> QApplication:
@@ -210,6 +210,88 @@ def test_annotation_panel_preferences_survive_comparison_mode_switch(tmp_path: P
 
     assert window.clinical_dock.isHidden() is True
     assert context.session.panel_visibility["clinical_outcomes"] is False
+
+    window.close()
+
+
+def test_switching_active_panel_tabs_does_not_mark_other_panels_closed(tmp_path: Path) -> None:
+    app = _app()
+    window = RimeMainWindow()
+    context = WorkingContext.create(
+        session_dir=tmp_path / "panel-tab-session",
+        name="Panel Tabs",
+        videos=[VideoConfig(path="video.mp4", role="primary")],
+    )
+
+    window._load_context(context)
+    app.processEvents()
+
+    window.model_runner_dock.raise_()
+    app.processEvents()
+
+    assert window.annotation_list_action.isChecked() is True
+    assert window.model_runner_action.isChecked() is True
+    assert context.session.panel_visibility["annotation_list"] is True
+    assert context.session.panel_visibility["model_runner"] is True
+
+    window.close()
+    app.processEvents()
+
+    reopened = WorkingContext.open(context.session.session_dir)
+    reloaded_window = RimeMainWindow()
+    reloaded_window._load_context(reopened)
+    app.processEvents()
+
+    assert reloaded_window.annotation_list_dock.isHidden() is False
+    assert reloaded_window.model_runner_dock.isHidden() is False
+    assert reloaded_window.model_eval_dock.isHidden() is False
+    assert reloaded_window.clinical_dock.isHidden() is False
+    assert reloaded_window.annotation_list_action.isChecked() is True
+    assert reloaded_window.model_runner_action.isChecked() is True
+    assert reloaded_window.model_eval_action.isChecked() is True
+    assert reloaded_window.clinical_action.isChecked() is True
+
+    reloaded_window.close()
+
+
+def test_comparison_mode_keeps_session_a_annotations_read_only(tmp_path: Path) -> None:
+    app = _app()
+    window = RimeMainWindow()
+    context = WorkingContext.create(
+        session_dir=tmp_path / "comparison-read-only-session",
+        name="Comparison Read Only",
+        videos=[VideoConfig(path="video.mp4", role="primary")],
+    )
+    annotation, _ = context.create_annotation("Notes", "Draft", 0.0, 100.0, ghost=True)
+
+    window._load_context(context)
+    window.timeline.select_annotation(annotation.id)
+    window._update_toolbar_state()
+    app.processEvents()
+
+    assert window.annotation_toolbar.delete_action.isEnabled() is True
+    assert window.annotation_toolbar.edit_action.isEnabled() is True
+    assert window.annotation_toolbar.cut_action.isEnabled() is True
+    assert window.annotation_toolbar.accept_ghost_action.isEnabled() is True
+    assert window.annotation_toolbar.reject_ghost_action.isEnabled() is True
+
+    window._comparison_store = AnnotationStore()
+    window._apply_layout(LayoutMode.COMPARISON)
+    window._update_toolbar_state()
+    app.processEvents()
+
+    assert window.annotation_toolbar.delete_action.isEnabled() is False
+    assert window.annotation_toolbar.edit_action.isEnabled() is False
+    assert window.annotation_toolbar.cut_action.isEnabled() is False
+    assert window.annotation_toolbar.accept_ghost_action.isEnabled() is False
+    assert window.annotation_toolbar.reject_ghost_action.isEnabled() is False
+
+    window._on_accept_ghost()
+    window._on_delete_selected()
+
+    preserved = context.store.get(annotation.id)
+    assert preserved is not None
+    assert preserved.ghost is True
 
     window.close()
 

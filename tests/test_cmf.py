@@ -10,7 +10,13 @@ import pytest
 from rime_core.cmf import CMFLoader, CMFValidationError
 
 
-def _write_wrapper_package(path: Path, *, name: str = "DemoModel", include_version: bool = True) -> Path:
+def _write_wrapper_package(
+    path: Path,
+    *,
+    name: str = "DemoModel",
+    include_version: bool = True,
+    requirements: list[dict[str, str]] | None = None,
+) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     config = {
         "cmf_version": "1.0",
@@ -50,6 +56,8 @@ def _write_wrapper_package(path: Path, *, name: str = "DemoModel", include_versi
     }
     if include_version:
         config["version"] = "0.1.0"
+    if requirements is not None:
+        config["requirements"] = requirements
 
     (path / "config.json").write_text(json.dumps(config), encoding="utf-8")
     (path / "labels.json").write_text(
@@ -138,6 +146,7 @@ def test_load_wrapper_package_directory(tmp_path: Path) -> None:
     assert package.config.output_mappings == [
         {"output_name": "fog_probability", "lane": "FOG", "label": "FOG"}
     ]
+    assert package.config.requirements == []
     assert np.isclose(output["fog_probability"][0], 0.75)
 
 
@@ -191,6 +200,44 @@ def test_malformed_output_mappings_raise_validation_error(tmp_path: Path) -> Non
     (package_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
 
     with pytest.raises(CMFValidationError, match="output_mappings"):
+        CMFLoader.load(package_dir)
+
+
+def test_load_declared_requirements_and_detect_missing_imports(tmp_path: Path) -> None:
+    package_dir = _write_wrapper_package(
+        tmp_path / "requirements-demo.rime",
+        requirements=[
+            {
+                "package": "numpy",
+                "import": "numpy",
+                "install_hint": "pip install numpy",
+            },
+            {
+                "package": "demo-missing-package",
+                "import": "demo_missing_package_for_rime_tests",
+                "install_hint": "pip install demo-missing-package",
+            },
+        ],
+    )
+
+    package = CMFLoader.load(package_dir)
+
+    assert [requirement.package for requirement in package.config.requirements] == [
+        "numpy",
+        "demo-missing-package",
+    ]
+    missing = package.missing_requirements()
+    assert [item.requirement.package for item in missing] == ["demo-missing-package"]
+    assert missing[0].requirement.import_name == "demo_missing_package_for_rime_tests"
+
+
+def test_invalid_requirements_raise_validation_error(tmp_path: Path) -> None:
+    package_dir = _write_wrapper_package(tmp_path / "bad-requirements.rime")
+    config = json.loads((package_dir / "config.json").read_text(encoding="utf-8"))
+    config["requirements"] = [{"package": "opencv-contrib-python"}]
+    (package_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
+
+    with pytest.raises(CMFValidationError, match="requirements"):
         CMFLoader.load(package_dir)
 
 

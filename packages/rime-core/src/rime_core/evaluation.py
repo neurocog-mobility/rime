@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from rime_core.annotations import Annotation
+from rime_core.common.intervals import annotation_iou
 
 
 @dataclass
@@ -202,7 +203,7 @@ def _episode_match_intervals(
         best_iou = 0.0
         for pred_idx in unmatched_pred:
             for gt_idx in unmatched_gt:
-                score = _annotation_iou(predictions[pred_idx], ground_truth[gt_idx])
+                score = annotation_iou(predictions[pred_idx], ground_truth[gt_idx])
                 if score > best_iou:
                     best_iou = score
                     best_pair = (pred_idx, gt_idx)
@@ -214,16 +215,6 @@ def _episode_match_intervals(
         tp += 1
 
     return tp, len(unmatched_pred), len(unmatched_gt)
-
-
-def _annotation_iou(left: Annotation, right: Annotation) -> float:
-    intersection = max(0.0, min(left.end_ms, right.end_ms) - max(left.start_ms, right.start_ms))
-    if intersection <= 0:
-        return 0.0
-    union = max(left.end_ms, right.end_ms) - min(left.start_ms, right.start_ms)
-    if union <= 0:
-        return 0.0
-    return float(intersection / union)
 
 
 def _tolerance_match(

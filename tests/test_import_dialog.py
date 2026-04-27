@@ -9,8 +9,8 @@ from PySide6.QtWidgets import QApplication
 
 from rime_core import MAX_SESSION_VIDEOS, ProtocolSchema
 from rime_core.elan_import import TierMapping
-from rime_ui import import_dialog as import_dialog_module
-from rime_ui.import_dialog import ImportDialog
+from rime_ui.dialogs import import_dialog as import_dialog_module
+from rime_ui.dialogs.import_dialog import ImportDialog
 
 
 def _app() -> QApplication:

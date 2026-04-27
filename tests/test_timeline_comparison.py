@@ -4,11 +4,13 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from rime_core.annotations import Annotation, AnnotationStore
 from rime_core.schema import ProtocolSchema
-from rime_ui.timeline import COMPARISON_SOURCE, SESSION_A_SOURCE, TimelineWidget
+from rime_ui.timeline import COMPARISON_SOURCE, MATCHED_MODE_SOURCE, SESSION_A_SOURCE, TimelineWidget
 
 
 def _app() -> QApplication:
@@ -155,6 +157,34 @@ def test_timeline_resolves_source_row_from_y_position() -> None:
     assert timeline.lanes._source_at_y(level, lane_y + 29) == "model:demo"
 
 
+def test_timeline_supports_matched_episode_row_and_overlays() -> None:
+    _app()
+    timeline = TimelineWidget(ProtocolSchema.default())
+    primary = AnnotationStore()
+    primary.add(Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0, source="manual"))
+    comparison = AnnotationStore()
+    comparison.add(Annotation(id="b1", lane="FOG", label="FOG", start_ms=120.0, end_ms=280.0, source="manual"))
+    matched = AnnotationStore()
+    matched.add(
+        Annotation(id="m1", lane="FOG", label="FOG", start_ms=110.0, end_ms=290.0, source="matched:average")
+    )
+
+    timeline.set_store(primary)
+    timeline.set_comparison_store(comparison)
+    timeline.set_matched_episode_store(matched, "M (avg)")
+    timeline.set_comparison_filters("FOG", "manual", "manual")
+    timeline.set_show_comparison(True)
+
+    level = timeline.lanes._lane_name_to_level("FOG")
+    assert level is not None
+    assert timeline.lanes._lane_sources(level) == [SESSION_A_SOURCE, COMPARISON_SOURCE, MATCHED_MODE_SOURCE]
+    assert timeline.lanes._source_short_label(MATCHED_MODE_SOURCE) == "M (avg)"
+
+    timeline.set_active_overlay_target("FOG", MATCHED_MODE_SOURCE)
+
+    assert set(timeline.signals._overlay_data) == {"m1"}
+
+
 def test_signal_overlays_follow_active_lane_source() -> None:
     _app()
     timeline = TimelineWidget(ProtocolSchema.default())
@@ -170,3 +200,40 @@ def test_signal_overlays_follow_active_lane_source() -> None:
     timeline.set_active_overlay_target("FOG", "model:demo")
 
     assert set(timeline.signals._overlay_data) == {"a2"}
+
+
+def test_timeline_comparison_mode_does_not_create_source_a_annotations() -> None:
+    _app()
+    timeline = TimelineWidget(ProtocolSchema.default())
+    primary = AnnotationStore()
+    primary.add(Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0, source="manual"))
+    comparison = AnnotationStore()
+    comparison.add(Annotation(id="b1", lane="FOG", label="FOG", start_ms=120.0, end_ms=280.0, source="manual"))
+
+    timeline.resize(1200, 500)
+    timeline.set_store(primary)
+    timeline.set_comparison_store(comparison)
+    timeline.set_comparison_filters("FOG", "manual", "manual")
+    timeline.set_show_comparison(True)
+
+    level = timeline.lanes._lane_name_to_level("FOG")
+    assert level is not None
+    row_y = timeline.lanes._sub_row_y(level, SESSION_A_SOURCE) + 10
+    emitted: list[tuple[int, float, float]] = []
+    timeline.annotation_created.connect(lambda lane, start, end: emitted.append((lane, start, end)))
+
+    QTest.mousePress(
+        timeline.lanes,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+        QPoint(350, row_y),
+    )
+    QTest.mouseMove(timeline.lanes, QPoint(500, row_y))
+    QTest.mouseRelease(
+        timeline.lanes,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+        QPoint(500, row_y),
+    )
+
+    assert emitted == []

@@ -7,10 +7,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication
 
-from rime_core.context import WorkingContext
 from rime_core.coverage import CoverageSpec
-from rime_core.session import ClinicalMetricSpec, VideoConfig
-from rime_ui.clinical_panel import ClinicalPanel
+from rime_core.sessions import ClinicalMetricSpec, VideoConfig
+from rime_core.workspace import WorkingContext
+from rime_ui.panels.clinical_panel import ClinicalPanel
 
 
 def _app() -> QApplication:

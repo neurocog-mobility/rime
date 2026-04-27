@@ -23,13 +23,12 @@ def test_compute_irr_reports_perfect_agreement_for_identical_intervals() -> None
     result = compute_irr(store_a, store_b, 1000.0, lane="FOG", frame_resolution_ms=100.0)
 
     assert result.cohens_kappa == pytest.approx(1.0)
-    assert result.percent_agreement == pytest.approx(1.0)
-    assert result.frame_iou == pytest.approx(1.0)
+    assert result.set_iou == pytest.approx(1.0)
     assert len(result.matched_episodes) == 1
     assert not result.unmatched_a
     assert not result.unmatched_b
     assert result.per_label["FOG"].matched == 1
-    assert result.per_label["FOG"].episode_iou == pytest.approx(1.0)
+    assert result.per_label["FOG"].set_iou == pytest.approx(1.0)
 
 
 def test_compute_irr_tracks_unmatched_annotations_and_label_breakdown() -> None:
@@ -46,7 +45,7 @@ def test_compute_irr_tracks_unmatched_annotations_and_label_breakdown() -> None:
     assert len(result.matched_episodes) == 1
     assert [annotation.id for annotation in result.unmatched_a] == ["a2"]
     assert not result.unmatched_b
-    assert result.frame_iou == pytest.approx(0.8)
+    assert result.set_iou == pytest.approx(160 / 400)
     assert result.per_label["FOG"].matched == 1
     assert result.per_label["FOG"].unmatched_a == 1
     assert result.per_label["FOG"].unmatched_b == 0
