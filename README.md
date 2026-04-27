@@ -1,6 +1,15 @@
 # RIME
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19804971.svg)](https://doi.org/10.5281/zenodo.19804971)
+[![PyPI](https://img.shields.io/pypi/v/neurocog-rime-core)](https://pypi.org/project/neurocog-rime-core/)
+
 RIME is a multimodal annotation toolkit for Parkinson's disease research. It combines a headless core package for sessions, schemas, annotation logic, import/export, and model orchestration with a Qt desktop application for interactive review and labeling.
+
+## Install
+
+```bash
+pip install neurocog-rime-core neurocog-rime-ui
+```
 
 ## Repository Layout
 
@@ -9,8 +18,6 @@ This repo is organized as two installable Python packages:
 - `packages/rime-core`: headless library published as `neurocog-rime-core`
 - `packages/rime-ui`: Qt desktop app published as `neurocog-rime-ui`
 
-The old monolithic `src/rime/core` and `src/rime/ui` layout no longer exists.
-
 ## Install For Development
 
 ```bash
@@ -18,13 +25,6 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e packages/rime-core
 pip install -e packages/rime-ui
-```
-
-If you want optional extras:
-
-```bash
-pip install -e "packages/rime-core[onnx,video]"
-pip install -e "packages/rime-ui[docs]"
 ```
 
 ## Launch The App
@@ -44,7 +44,7 @@ rime --open /path/to/session.json --model /path/to/model.rime
 
 ## Quick Start
 
-1. Install both packages in editable mode.
+1. Install both packages.
 2. Launch `rime`.
 3. Create or open a session.
 4. Load a protocol schema and media/signals as needed.
@@ -63,10 +63,10 @@ rime --open /path/to/session.json --model /path/to/model.rime
 
 ## Development
 
-Run the test suite from the repo root with both package source trees on `PYTHONPATH`:
+Run the test suite from the repo root:
 
 ```bash
-PYTHONPATH=packages/rime-core/src:packages/rime-ui/src .venv/bin/pytest
+.venv/bin/pytest
 ```
 
 Build docs locally:
@@ -78,3 +78,17 @@ mkdocs serve
 ## Docs
 
 Project documentation lives in [`docs/`](docs/) and is configured with [`mkdocs.yml`](mkdocs.yml).
+
+## Citation
+
+If you use RIME in your research, please cite:
+
+```bibtex
+@software{zafar2026rime,
+  author    = {Zafar, Abdullah and Casagrande Pinto, Arthur Eduardo and Homagain, Abhishesh and Howe, Erika and Ehgoetz Martens, Kaylena},
+  title     = {RIME: An open-source framework for annotating and structuring freezing of gait events for clinical and computational research},
+  year      = {2026},
+  doi       = {10.5281/zenodo.19804971},
+  url       = {https://doi.org/10.5281/zenodo.19804971}
+}
+```

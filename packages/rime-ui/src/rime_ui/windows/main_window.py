@@ -2231,7 +2231,10 @@ class RimeMainWindow(QMainWindow):
         QMessageBox.about(
             self,
             "About RIME",
-            "RIME\n\nVideo-and-signal annotation environment for multimodal review.",
+            "RIME v0.1.0\n\n"
+            "Open-source annotation platform for freezing of gait research.\n\n"
+            "https://github.com/neurocog-mobility/rime\n"
+            "DOI: 10.5281/zenodo.19804971",
         )
 
     def _on_select_display_signals(self) -> None:

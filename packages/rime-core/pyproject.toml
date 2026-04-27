@@ -27,5 +27,3 @@ ignore-vcs = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/rime_core"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/rime_core/config" = "rime_core/config"

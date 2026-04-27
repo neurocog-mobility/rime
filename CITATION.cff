@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use RIME in your research, please cite it using this metadata."
+title: "RIME: An open-source framework for annotating freezing of gait to bridge clinical and computational research"
+version: 0.1.0
+doi: 10.5281/zenodo.19804971
+date-released: "2026-04-26"
+license: MIT
+repository-code: "https://github.com/neurocog-mobility/rime"
+authors:
+  - family-names: Zafar
+    given-names: Abdullah
+    affiliation: "Université de Montréal"
+  - family-names: Casagrande Pinto
+    given-names: Arthur Eduardo
+    affiliation: "University of Waterloo"
+  - family-names: Homagain
+    given-names: Abhishesh
+    affiliation: "University of Waterloo"
+  - family-names: Howe
+    given-names: Erika
+    affiliation: "University of Waterloo"
+  - family-names: Ehgoetz Martens
+    given-names: Kaylena
+    affiliation: "University of Waterloo"
