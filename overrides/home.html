@@ -1,0 +1,57 @@
+{% extends "main.html" %}
+
+{% block tabs %}
+{{ super() }}
+
+<section class="rime-hero">
+  <canvas id="rime-snowflake-bg" class="rime-hero__canvas"></canvas>
+  <div class="rime-hero__inner">
+
+    <img src="{{ base_url }}/assets/rime-logo.svg" alt="RIME" class="rime-hero__logo">
+
+    <div class="rime-hero__etymology">
+      <span class="rime-hero__word"><strong>rime</strong>&nbsp; /rīm/ &nbsp;<em>noun</em></span>
+      <span class="rime-hero__def">The crystalline structure formed by freezing fog —<br>a record of an otherwise transient phenomenon.</span>
+    </div>
+
+    <p class="rime-hero__desc">
+      Open-source multimodal annotation platform for freezing of gait research in Parkinson's disease.
+    </p>
+
+    <div class="rime-hero__badges">
+      <a href="https://pypi.org/project/neurocog-rime-core/"><img alt="PyPI" src="https://img.shields.io/pypi/v/neurocog-rime-core?label=PyPI&color=4fa8d4&labelColor=1a4a6b&style=flat-square"></a>
+      <a href="https://doi.org/10.5281/zenodo.19804971"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19804971-4fa8d4?labelColor=1a4a6b&style=flat-square"></a>
+      <a href="https://github.com/neurocog-mobility/rime"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-neurocog--mobility%2Frime-4fa8d4?logo=github&logoColor=white&labelColor=1a4a6b&style=flat-square"></a>
+    </div>
+
+    <div class="rime-hero__install">
+      <code>pip install neurocog-rime-core neurocog-rime-ui</code>
+    </div>
+
+    <div class="rime-hero__buttons">
+      <a href="{{ base_url }}/getting-started/installation/" class="rime-btn rime-btn--primary">
+        Get Started
+      </a>
+      <a href="https://github.com/neurocog-mobility/rime" class="rime-btn rime-btn--secondary">
+        View on GitHub
+      </a>
+    </div>
+
+  </div>
+
+  <p class="rime-hero__register">
+    Using RIME in your lab? <a href="https://forms.cloud.microsoft/r/Dt41vtrcWw" target="_blank">Tell us →</a>
+  </p>
+
+  <a href="#" class="rime-hero__scroll" onclick="document.querySelector('.md-content').scrollIntoView({behavior:'smooth'}); return false;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+  </a>
+
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ base_url }}/assets/js/snowflake-bg.js"></script>
+{% endblock %}

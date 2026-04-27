@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+
+{% block footer %}
+{{ super() }}
+<div class="rime-footer-credit">
+  {{ config.extra.homepage_animation_credit | safe }}
+</div>
+{% endblock %}
