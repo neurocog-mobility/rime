@@ -28,7 +28,7 @@ notes/
 sample-data/
 manuscript/
 scripts/
-submission_checklist.md
+#submission_checklist.md
 /src/
 *.egg-info/
 
