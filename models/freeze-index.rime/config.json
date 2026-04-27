@@ -1,0 +1,76 @@
+{
+  "cmf_version": "1.0",
+  "name": "Freeze Index",
+  "version": "1.0.0",
+  "description": "Classic Freeze Index (Moore et al., 2008). PSD ratio of freeze band (3-8 Hz) to locomotor band (0.5-3 Hz) from lower-limb vertical accelerometry.",
+  "license": "public-domain",
+  "runtime": {
+    "type": "wrapper",
+    "entry": "wrapper.py"
+  },
+  "requirements": [
+    {
+      "package": "numpy",
+      "import": "numpy",
+      "install_hint": "pip install numpy"
+    },
+    {
+      "package": "scipy",
+      "import": "scipy",
+      "install_hint": "pip install scipy"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "accel_window",
+      "type": "signal",
+      "channels": [
+        "acc_z"
+      ],
+      "sampling_rate_hz": 128,
+      "description": "Vertical acceleration (z-axis) from lower-limb sensor"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "fog_probability",
+      "type": "probability",
+      "labels": [
+        "no_fog",
+        "fog"
+      ]
+    }
+  ],
+  "inference": {
+    "mode": "windowed",
+    "window_size_ms": 6000,
+    "stride_ms": 500,
+    "threshold": 0.9
+  },
+  "parameters": [
+    {
+      "name": "fi_centre",
+      "type": "float",
+      "label": "FI Threshold (Moore 2008 default: 2.0)",
+      "default": 2.0,
+      "min": 0.5,
+      "max": 10.0,
+      "description": "FI value mapped to 50% probability via sigmoid"
+    },
+    {
+      "name": "fi_scale",
+      "type": "float",
+      "label": "Sigmoid Steepness",
+      "default": 1.0,
+      "min": 0.1,
+      "max": 5.0
+    }
+  ],
+  "output_mappings": [
+    {
+      "output_name": "fog_probability",
+      "lane": "FOG",
+      "label": "FOG"
+    }
+  ]
+}

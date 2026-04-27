@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use RIME in your research, please cite it using this metadata."
-title: "RIME: An open-source framework for annotating freezing of gait to bridge clinical and computational research"
+title: "RIME: Open-source multimodal signal annotation, modeling, and benchmarking for Parkinson's research."
 version: 0.1.0
 doi: 10.5281/zenodo.19804971
 date-released: "2026-04-26"

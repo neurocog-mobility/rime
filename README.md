@@ -86,7 +86,7 @@ If you use RIME in your research, please cite:
 ```bibtex
 @software{zafar2026rime,
   author    = {Zafar, Abdullah and Casagrande Pinto, Arthur Eduardo and Homagain, Abhishesh and Howe, Erika and Ehgoetz Martens, Kaylena},
-  title     = {RIME: An open-source framework for annotating and structuring freezing of gait events for clinical and computational research},
+  title     = {RIME: Open-source multimodal signal annotation, modeling, and benchmarking for Parkinson's research},
   year      = {2026},
   doi       = {10.5281/zenodo.19804971},
   url       = {https://doi.org/10.5281/zenodo.19804971}

@@ -1,0 +1,17 @@
+.md-header__title { display: none; }
+
+.borderless-table table,
+.borderless-table th,
+.borderless-table td {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:root {
+  --md-primary-fg-color:        #3c9dd0;
+  --md-primary-fg-color--light: #6db8e0;
+  --md-primary-fg-color--dark:  #2a7aaa;
+  --md-primary-bg-color:        #ffffff;
+  --md-primary-bg-color--light: #ffffffcc;
+  --md-accent-fg-color:         #3c9dd0;
+}

@@ -1,0 +1,87 @@
+{
+  "cmf_version": "1.0",
+  "name": "Movement Detector (Video)",
+  "version": "1.0.0",
+  "description": "Detects moving vs stationary bouts from video using an OpenCV object tracker. User draws a bounding box around the subject in the first frame.",
+  "license": "MIT",
+  "runtime": {
+    "type": "wrapper",
+    "entry": "wrapper.py"
+  },
+  "requirements": [
+    {
+      "package": "opencv-contrib-python",
+      "import": "cv2",
+      "install_hint": "pip install opencv-contrib-python"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "video",
+      "type": "video",
+      "description": "Camera view of participant"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "moving_bouts",
+      "type": "interval",
+      "description": "Intervals where the subject is moving [[start_ms, end_ms], ...]"
+    }
+  ],
+  "inference": {
+    "mode": "whole_signal",
+    "threshold": 0.5
+  },
+  "parameters": [
+    {
+      "name": "subject_bbox",
+      "type": "bounding_box",
+      "label": "Subject (first frame)",
+      "default": null,
+      "description": "Bounding box drawn on the subject in the first frame (x,y,w,h normalised 0-1). Required."
+    },
+    {
+      "name": "movement_threshold",
+      "type": "float",
+      "label": "Movement Threshold",
+      "default": 0.00025,
+      "min": 0.0001,
+      "max": 0.05,
+      "description": "Minimum per-frame centroid displacement (normalised by frame width) to count as movement"
+    },
+    {
+      "name": "smoothing_window_ms",
+      "type": "int",
+      "label": "Smoothing Window (ms)",
+      "default": 500,
+      "min": 100,
+      "max": 2000,
+      "description": "Rolling mean window applied to the displacement signal before thresholding"
+    },
+    {
+      "name": "min_bout_ms",
+      "type": "int",
+      "label": "Minimum Bout Duration (ms)",
+      "default": 1000,
+      "min": 200,
+      "max": 10000
+    },
+    {
+      "name": "merge_gap_ms",
+      "type": "int",
+      "label": "Merge Gap (ms)",
+      "default": 500,
+      "min": 0,
+      "max": 5000,
+      "description": "Merge moving bouts separated by less than this gap"
+    }
+  ],
+  "output_mappings": [
+    {
+      "output_name": "moving_bouts",
+      "lane": "Tasks",
+      "label": "Moving"
+    }
+  ]
+}

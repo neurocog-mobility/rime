@@ -1,0 +1,84 @@
+{
+  "cmf_version": "1.0",
+  "name": "Walking Classifier",
+  "version": "1.0.0",
+  "description": "ONNX walking classifier using a small 1D CNN over bilateral acceleration magnitude windows.",
+  "license": "MIT",
+  "runtime": {
+    "type": "wrapper",
+    "entry": "wrapper.py"
+  },
+  "requirements": [
+    {
+      "package": "onnxruntime",
+      "import": "onnxruntime",
+      "install_hint": "pip install onnxruntime"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "left_ankle",
+      "type": "signal",
+      "channels": [
+        "acc_x",
+        "acc_y",
+        "acc_z"
+      ],
+      "sampling_rate_hz": 100,
+      "shape": [
+        1,
+        300,
+        3
+      ],
+      "description": "Left ankle 3-axis accelerometer at 100Hz over a 4 s window. The wrapper converts to dynamic acceleration magnitude."
+    },
+    {
+      "name": "right_ankle",
+      "type": "signal",
+      "channels": [
+        "acc_x",
+        "acc_y",
+        "acc_z"
+      ],
+      "sampling_rate_hz": 100,
+      "shape": [
+        1,
+        300,
+        3
+      ],
+      "description": "Right ankle 3-axis accelerometer at 100Hz over a 3 s window. The wrapper converts to dynamic acceleration magnitude."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "walking_probability",
+      "type": "probability",
+      "labels": [
+        "no_walking",
+        "walking"
+      ]
+    }
+  ],
+  "inference": {
+    "mode": "windowed",
+    "window_size_ms": 3000,
+    "stride_ms": 1000,
+    "threshold": 0.9
+  },
+  "parameters": [
+    {
+      "name": "scale_to_g",
+      "type": "bool",
+      "label": "Convert m/s² to g",
+      "default": true,
+      "description": "Divide all accelerometer channels by 9.81 before preprocessing."
+    }
+  ],
+  "output_mappings": [
+    {
+      "output_name": "walking_probability",
+      "lane": "Tasks",
+      "label": "Walk"
+    }
+  ]
+}

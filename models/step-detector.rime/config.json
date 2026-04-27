@@ -1,0 +1,65 @@
+{
+  "cmf_version": "1.0",
+  "name": "Step Detector",
+  "version": "1.0.0",
+  "description": "Heel-strike step detection from ankle accelerometry using Savitzky-Golay smoothing, adaptive threshold, and peak detection (Romera-Manchado et al., 2025).",
+  "license": "MIT",
+  "runtime": {
+    "type": "wrapper",
+    "entry": "wrapper.py"
+  },
+  "requirements": [
+    {
+      "package": "scipy",
+      "import": "scipy",
+      "install_hint": "pip install scipy"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "ankle_accel",
+      "type": "signal",
+      "channels": ["acc_x", "acc_y", "acc_z"],
+      "sampling_rate_hz": 128,
+      "description": "3-axis ankle accelerometer (m/s²)"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "step_times",
+      "type": "point",
+      "description": "Heel-strike timestamps in milliseconds"
+    }
+  ],
+  "inference": {
+    "mode": "whole_signal",
+    "threshold": 0.5
+  },
+  "parameters": [
+    {
+      "name": "min_step_interval_ms",
+      "type": "int",
+      "label": "Minimum Step Interval (ms)",
+      "default": 300,
+      "min": 150,
+      "max": 800,
+      "description": "Minimum time between steps — limits max cadence to ~200 steps/min"
+    },
+    {
+      "name": "threshold_multiplier",
+      "type": "float",
+      "label": "Adaptive Threshold Multiplier",
+      "default": 1.0,
+      "min": 0.3,
+      "max": 3.0,
+      "description": "Peak height threshold as multiple of the rolling 2s standard deviation"
+    }
+  ],
+  "output_mappings": [
+    {
+      "output_name": "step_times",
+      "lane": "Steps",
+      "label": "step"
+    }
+  ]
+}
