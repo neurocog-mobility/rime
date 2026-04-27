@@ -7,6 +7,7 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  custom_dir: docs/overrides
   logo: assets/rime-logo-dark.png
   favicon: assets/rime-icon.png
   palette:
@@ -29,6 +30,9 @@ theme:
     - search.highlight
     - content.code.copy
     - content.action.edit
+
+extra:
+  homepage_animation_credit: 'Homepage animation derived from <a href="https://openprocessing.org/sketch/1406642">Snowflake Generator</a> by Ivan Rudnicki, <a href="https://creativecommons.org/licenses/by-nc-sa/3.0">CC BY-NC-SA 3.0</a>.'
 
 extra_css:
   - stylesheets/extra.css
