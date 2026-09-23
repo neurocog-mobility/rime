@@ -1,0 +1,1527 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Multimodal Annotator for Movement Disorder Research">
+      
+      
+      
+        <link rel="canonical" href="https://neurocog-mobility.github.io/rime/measurement-records/rime-specification/">
+      
+      
+        <link rel="prev" href="../../study-setup/protocol-schema/">
+      
+      
+        <link rel="next" href="../exchange/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/rime-icon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>RIME specification - RIME</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rime-measurement-record-specification-closed-contract-11" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RIME" class="md-header__button md-logo" aria-label="RIME" data-md-component="logo">
+      
+  <img src="../../assets/rime-logo-dark.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RIME
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              RIME specification
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/neurocog-mobility/rime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    neurocog-mobility/rime
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/installation/" class="md-tabs__link">
+          
+  
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../study-setup/protocol-schema/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RIME" class="md-nav__button md-logo" aria-label="RIME" data-md-component="logo">
+      
+  <img src="../../assets/rime-logo-dark.png" alt="logo">
+
+    </a>
+    RIME
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/neurocog-mobility/rime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    neurocog-mobility/rime
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/first-session/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create a workspace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../annotation/workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Annotate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality-assurance/review-layers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/loading-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../clinical-analysis/clinical-metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Save and compare measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../study-setup/workspace-persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Save and reopen work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../study-setup/protocol-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Study protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RIME specification
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RIME specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose-and-record-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose and record boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-closed-node-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Closed node vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-closed-relation-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Closed relation vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-complete-activity-connection-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Complete activity connection matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-methods-decisions-temporal-mappings-and-responsibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Methods, decisions, temporal mappings and responsibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-calculation-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Calculation contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-fixed-fields-extensible-scientific-data-and-missing-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Fixed fields, extensible scientific data and missing history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-exchange-overlay-and-presentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Exchange, overlay and presentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../exchange/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exchange API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison semantics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/cmf-specification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CMF specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/cmf-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CMF examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose-and-record-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose and record boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-closed-node-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Closed node vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-closed-relation-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Closed relation vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-complete-activity-connection-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Complete activity connection matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-methods-decisions-temporal-mappings-and-responsibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Methods, decisions, temporal mappings and responsibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-calculation-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Calculation contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-fixed-fields-extensible-scientific-data-and-missing-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Fixed fields, extensible scientific data and missing history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-exchange-overlay-and-presentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Exchange, overlay and presentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/neurocog-mobility/rime/edit/main/docs/measurement-records/rime-specification.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="rime-measurement-record-specification-closed-contract-11">RIME measurement record specification — closed contract 1.1</h1>
+<p><strong>RIME — Reproducible Interval-derived Measurement Exchange.</strong></p>
+<p>This document is the normative contract for the native reader, writer, comparison
+operation and reference application. Profile <strong>1.1</strong> supersedes the permissive 1.0
+prototype; it is distinct from application version v0.2. There is no compatibility
+adapter. The wire schema is
+<a href="https://github.com/neurocog-mobility/rime/blob/main/packages/rime-core/src/rime_core/config/schemas/rime-1.1.schema.json">the JSON Schema</a>;
+<a href="https://github.com/neurocog-mobility/rime/blob/main/packages/rime-core/src/rime_core/record_contract.py">record_contract.py</a> enforces
+cross-node constraints. The schema and semantic validator must both pass.</p>
+<h2 id="1-purpose-and-record-boundary">1. Purpose and record boundary</h2>
+<p>A record is one interval-derived measurement and the retained basis for interpreting
+and recalculating it. It is rooted at one MeasurementResult Entity. Its complete
+record is the dependency closure reachable through the three relations below. A
+plain-JSON <code>.rime</code> document holds one or more such roots and their shared components.
+Media bytes, workspace state and an interface-action log are not required contents.</p>
+<p>RIME records fixed scientific states. A changed annotation state receives a new
+Entity identity. Production and review capture final states and decisions, not
+individual clicks, boundary drags, playback, undo operations or workspace saves.
+Only scientific objects used in the retained derivation belong in its graph.</p>
+<h2 id="2-closed-node-vocabulary">2. Closed node vocabulary</h2>
+<p>There are three PROV classes and eleven permitted RIME kinds. Agent kinds are encoded
+in <code>rime:data.kind</code>; Entity and Activity kinds are encoded as a second <code>@type</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>RIME kind / serialized value</th>
+<th>Required contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entity</td>
+<td>Source reference / <code>rime:Source</code></td>
+<td><code>source_kind</code>, filename, checksum or explicit unavailable checksum</td>
+</tr>
+<tr>
+<td>Entity</td>
+<td>Annotation set / <code>rime:AnnotationSet</code></td>
+<td>Stable annotation IDs, lane and label, interval/point type, boundaries, timeline, retained/proposed state, review status</td>
+</tr>
+<tr>
+<td>Entity</td>
+<td>Observation period / <code>rime:ObservationPeriod</code></td>
+<td>Timeline and resolved observation intervals; selected annotation IDs and selection rule when annotation-derived</td>
+</tr>
+<tr>
+<td>Entity</td>
+<td>Calculation definition / <code>rime:CalculationDefinition</code></td>
+<td>Operation, version, clinical lane/label selector and unit</td>
+</tr>
+<tr>
+<td>Entity</td>
+<td>Measurement result / <code>rime:MeasurementResult</code></td>
+<td>Value, unit, eligible and covered duration, contributing annotation IDs and undefined-result reason where applicable</td>
+</tr>
+<tr>
+<td>Activity</td>
+<td><code>rime:AnnotationProduction</code></td>
+<td>Enumerated method, description, clinical-definition declaration; effective execution specification for computational production</td>
+</tr>
+<tr>
+<td>Activity</td>
+<td><code>rime:AnnotationReview</code></td>
+<td>Enumerated review method and final structured decisions</td>
+</tr>
+<tr>
+<td>Activity</td>
+<td><code>rime:MeasurementCalculation</code></td>
+<td>The specified calculation inputs; optional implementation metadata</td>
+</tr>
+<tr>
+<td>Agent</td>
+<td>Person / <code>person</code></td>
+<td>Name or retained pseudonymous designation</td>
+</tr>
+<tr>
+<td>Agent</td>
+<td>Group / <code>group</code></td>
+<td>Responsible team designation</td>
+</tr>
+<tr>
+<td>Agent</td>
+<td>Computational model / <code>model</code></td>
+<td>Responsible model designation</td>
+</tr>
+</tbody>
+</table>
+<p>Source subtypes are exactly <code>recording</code>, <code>annotation_file</code>, <code>model_package</code>.
+Recordings declare modality <code>video</code> or <code>signal</code>. A model package retains a manifest
+of unique constituent filenames/checksums, the snapshot scope, and the exact hashed
+representation. A constituent file is not independently promoted to an Entity merely
+because it is a file. Record a separate object only when independently consumed or
+produced by the allowed scientific activity. Package metadata/defaults do not replace
+its effective execution settings.</p>
+<p>The model acting as annotator is an Agent; its fixed package is an Entity. RIME or
+another application is not an annotation Agent merely because it hosts the workflow.
+Application versions, execution libraries and import tooling belong in metadata.</p>
+<p>The relevant protocol contents are retained with the annotation procedure's clinical
+definition and the calculation definition. Clinical-definition attributes may name
+the protocol and version. There is no Protocol node and a protocol is not an Agent.</p>
+<h2 id="3-closed-relation-vocabulary">3. Closed relation vocabulary</h2>
+<table>
+<thead>
+<tr>
+<th>Relation</th>
+<th>Direction</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prov:used</code></td>
+<td>Activity → Entity</td>
+<td>The declared scientific input, qualified by a permitted input role</td>
+</tr>
+<tr>
+<td><code>prov:wasGeneratedBy</code></td>
+<td>Entity → Activity</td>
+<td>The operation that established the fixed output</td>
+</tr>
+<tr>
+<td><code>prov:wasAssociatedWith</code></td>
+<td>Activity → Agent</td>
+<td>Responsibility for scientific annotation production or review</td>
+</tr>
+</tbody>
+</table>
+<p>The graph is acyclic, identities are unique within a document, and all graph
+references resolve locally. Each Activity has exactly one retained output Entity
+of its permitted kind. Each annotation set has exactly one generating production or
+review Activity, or no generating Activity with <code>history: "unknown"</code>. Every result
+has exactly one generating calculation. Source references, observation periods and
+calculation definitions have no generating Activity in this profile. Agents have no
+outgoing relations. Results are document roots; no unrelated nodes are allowed.</p>
+<p>Shared ancestors may serve multiple Activities. Graph depth is not a scientific
+constraint: a shared object need not occupy the same display layer as every user.
+Local repeated display references may preserve one identity without inventing nodes.</p>
+<h2 id="4-complete-activity-connection-matrix">4. Complete activity connection matrix</h2>
+<p>Only these combinations are permitted. <code>1+</code> means at least one; <code>0..1</code> means optional
+and at most one. Multiple labels/lanes can be retained in a single annotation set.</p>
+<table>
+<thead>
+<tr>
+<th>Activity</th>
+<th><code>method</code></th>
+<th>Permitted inputs (role: kind and count)</th>
+<th>Output</th>
+<th>Agent rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Annotation production</td>
+<td><code>manual</code></td>
+<td><code>recording</code>: recording Source, 1+</td>
+<td>One AnnotationSet</td>
+<td>One or more Person/Group Agents, or explicit unknown responsibility</td>
+</tr>
+<tr>
+<td>Annotation production</td>
+<td><code>computational</code></td>
+<td><code>recording</code>: recording Source, 1+; <code>model_package</code>: model-package Source, exactly 1; <code>scope_annotations</code>: AnnotationSet, 0..1</td>
+<td>One AnnotationSet</td>
+<td>Exactly one Model Agent</td>
+</tr>
+<tr>
+<td>Annotation production</td>
+<td><code>import</code></td>
+<td><code>import_file</code>: annotation-file Source, exactly 1</td>
+<td>One AnnotationSet</td>
+<td>No Agent association</td>
+</tr>
+<tr>
+<td>Annotation review</td>
+<td><code>verification</code></td>
+<td><code>annotation_input</code>: AnnotationSet, 1+; <code>recording</code>: recording Source, 0+</td>
+<td>One retained AnnotationSet</td>
+<td>One or more Person/Group Agents, or explicit unknown responsibility</td>
+</tr>
+<tr>
+<td>Annotation review</td>
+<td><code>adjudication</code></td>
+<td><code>annotation_input</code>: AnnotationSet, 2+; <code>recording</code>: recording Source, 0+</td>
+<td>One retained AnnotationSet</td>
+<td>One or more Person/Group Agents, or explicit unknown responsibility</td>
+</tr>
+<tr>
+<td>Measurement calculation</td>
+<td>No method field</td>
+<td><code>annotations</code>: retained AnnotationSet, exactly 1; <code>observation</code>: ObservationPeriod, exactly 1; <code>definition</code>: CalculationDefinition, exactly 1; <code>scope_annotations</code>: AnnotationSet, 0..1</td>
+<td>One MeasurementResult</td>
+<td>No Agent association</td>
+</tr>
+</tbody>
+</table>
+<p>The eight input-role tokens in this table are the entire permitted input-role
+vocabulary. Their serialized <code>prov:hadRole</code> values have prefix <code>rime:</code>. Roles cannot
+be freely coined, nor can an allowed role be used with the wrong Entity subtype.
+The output and cardinality rules apply to every Activity, not just the root's inputs.</p>
+<p>Imported historical authorship is metadata, not responsibility for the import.
+An unknown author does not become the importing software. A known earlier scientific
+production/review can instead be retained as that earlier Activity when available.</p>
+<p>Scope annotations are an explicitly declared extra input, not an arbitrary shortcut.
+For calculation they are permitted only when selected annotations define observation
+time. Their IDs, selection rule and resolved intervals must agree. If the event set
+also supplies scope, it is referenced directly without creating a second set.
+For computational production the scope set is retained and shares the output timeline.
+Its use and the effective execution specification describe the execution boundary.</p>
+<h2 id="5-methods-decisions-temporal-mappings-and-responsibility">5. Methods, decisions, temporal mappings and responsibility</h2>
+<p>Production methods are exactly <code>manual</code>, <code>computational</code>, <code>import</code>. Review methods
+are exactly <code>verification</code>, <code>adjudication</code>; these are values, not new node types.</p>
+<p>Every production has a clinical-definition declaration with <code>status: "known"</code> and
+retained descriptive content, or <code>status: "unknown"</code>. A known definition can also
+carry its identifier/version and protocol identifier/version. Unknown content is not
+silently inferred from a familiar label. Computational production must retain an
+<code>execution_specification</code> object; other production methods may not use that field.
+A computational <code>configuration_id</code> is optional. Parameter keys and values follow the
+retained computational procedure (CMF where applicable); they are not graph roles.
+Generic validation checks the graph contract, not the correctness of an arbitrary
+model implementation or whether its description is clinically adequate.</p>
+<p>Review decisions are exactly <code>accept</code>, <code>modify</code>, <code>reject</code>, <code>reject_remaining</code>,
+<code>union</code>, <code>intersection</code>, <code>mean</code>, <code>custom</code>, <code>no_event</code>, <code>unresolved</code>. Each retains
+input set/annotation references, output annotation IDs, a nonempty temporal extent,
+and an optional note. Outputs must account for the reviewed set exactly, without
+duplicate output assignments. Reject/no-event/unresolved decisions have no outputs.
+Unresolved decisions cannot accompany a <code>complete</code> review status. Recorded arithmetic
+boundary rules are not automatically evidence of clinical consensus. Validation checks
+referential and temporal consistency, not the clinical correctness of decisions.</p>
+<p>Every recording use includes an explicit mapping status <code>known</code> or <code>unknown</code>.
+A known mapping has a finite <code>offset_ms</code> and method <code>manual_offset</code> or <code>import</code>:
+<strong>record timeline time = source-relative time + offset</strong>. Source timestamp conversion
+and alignment-validation descriptions may accompany that use. Nonconstant errors
+require correction before capture; they are not represented as constant offsets.</p>
+<p>New workspace setup and the annotation workspace's alignment dialog accept synchronization notes for each
+source, including sources synchronized before import with no additional offset.
+Researchers can describe the prior synchronization method, tools, timing cues and
+checks. These notes persist with the workspace and accompany recording usage as
+<code>alignment_validation</code> in captured records. They are researcher declarations, not
+an automated validation of alignment. Computational runs retain the notes present
+at execution time.
+Mapping attributes are permitted only on recording or import-file uses. No interactive
+registration event or timing-adjustment Agent is created.</p>
+<p>Manual production and review identify known Person/Group Agents or declare
+<code>responsibility: "unknown"</code>, never both. Computational production identifies its
+Model Agent. Calculation and import have neither associated Agents nor unknown-Agent
+placeholders. Unknown authorship/history belongs to the affected retained information.</p>
+<h2 id="6-calculation-contract">6. Calculation contract</h2>
+<p>All annotation and observation coordinates are finite milliseconds on an explicitly
+identified common timeline. Intervals are half-open <code>[start, end)</code> with start &lt; end;
+point annotations have equal start/end. Observation intervals are unioned, including
+overlap/touching, before use. Selected event intervals are clipped to that union.</p>
+<table>
+<thead>
+<tr>
+<th>Operation (version <code>1</code>)</th>
+<th>Unit</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>covered_duration</code></td>
+<td><code>s</code></td>
+<td>Duration of the union of clipped selected intervals, divided by 1000</td>
+</tr>
+<tr>
+<td><code>percentage_coverage</code></td>
+<td><code>%</code></td>
+<td>100 × covered duration / eligible observation duration</td>
+</tr>
+<tr>
+<td><code>count</code></td>
+<td><code>count</code></td>
+<td>Number of selected annotation entries contributing inside the observation; each entry counts once</td>
+</tr>
+</tbody>
+</table>
+<p>Count does not infer episode identity or merge distinct entries. A point contributes
+when its time is inside an eligible half-open observation interval. Points cannot
+supply duration/percentage calculations. An interval touching only an observation
+boundary does not contribute. Empty observation yields <code>value: null</code> and
+<code>reason: "empty_observation"</code> for all three operations; nonempty observation with no
+selected events yields zero. Output includes covered/eligible milliseconds and sorted
+contributor IDs. The reader verifies the retained value against these inputs.</p>
+<p>Annotation states are <code>retained</code> or <code>proposed</code>; review states are <code>unknown</code>,
+<code>unreviewed</code>, <code>incomplete</code>, <code>complete</code>. Proposed annotations cannot silently become
+measurement inputs. Retained annotations may remain unreviewed/incomplete; the status
+is preserved and does not constitute clinical validation. Review is not compulsory.</p>
+<h2 id="7-fixed-fields-extensible-scientific-data-and-missing-history">7. Fixed fields, extensible scientific data and missing history</h2>
+<p>Top-level node and Activity-data keys are closed by the machine schema. Additional
+clinical labels, participant/context values, model parameters and implementation
+information live in their designated fields: clinical definition, research context,
+execution specification and metadata. These fields do not introduce graph nodes,
+input roles, responsibility associations or substitute for required scientific inputs.
+Import historical details and execution-environment details are metadata. There is no
+catch-all Activity method or additional graph-edge type.</p>
+<p>Missing provenance is explicit. An imported annotation's original history may be
+unknown while the import itself is known. A file checksum may be unavailable; this
+prevents claiming verified identity. The arithmetic basis is always present. These
+rules permit recalculation without media, but do not promise that a detector can be
+rerun without its recordings, package and required environment.</p>
+<h2 id="8-exchange-overlay-and-presentation">8. Exchange, overlay and presentation</h2>
+<p>The encoding is bounded PROV-O in JSON-LD: inline fixed context, <code>@graph</code>, URN node
+identities, <code>rime:version: "1.1"</code>, timezone-aware capture time and explicit root IDs.
+Qualified Usage describes the role and timing attributes of <code>used</code>, not a fourth
+scientific relationship or Activity. Native readers accept only profile 1.1.</p>
+<p>Comparison aligns roots and corresponding typed input roles; identity and unique
+source digests disambiguate where possible. Ambiguity is retained, not guessed by
+array position. Statuses are shared, equal, changed, A-only, B-only and unavailable.
+Conflicting contents under one identity are changed. Distinct equal components may
+share a displayed node while retaining both originals and A/B edge membership.
+Unknown provenance is never promoted to known equality. Each original record can be
+recovered from its side of the overlay. No aggregate similarity/distance is defined.</p>
+<p>Every graph node in a publication figure is an actual Entity, Activity or Agent (or
+an explicitly identified repeated reference). No mixed <code>Inputs</code> node is permitted.
+A model-package Entity is one coherent fixed object, not arbitrary visual grouping.
+Short labels and status colours can simplify the figure without changing relations.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+<div class="rime-footer-credit">
+  Homepage animation derived from <a href="https://openprocessing.org/sketch/1406642">Snowflake Generator</a> by Ivan Rudnicki, <a href="https://creativecommons.org/licenses/by-nc-sa/3.0">CC BY-NC-SA 3.0</a>.
+</div>
+
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
