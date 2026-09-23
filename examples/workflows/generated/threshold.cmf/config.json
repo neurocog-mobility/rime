@@ -1,0 +1,38 @@
+{
+  "cmf_version": "1.1",
+  "name": "Synthetic threshold",
+  "version": "1",
+  "description": "Synthetic software demonstration; not a clinical detector.",
+  "runtime": {
+    "type": "wrapper",
+    "entry": "wrapper.py"
+  },
+  "inputs": [
+    {
+      "name": "input",
+      "type": "signal",
+      "channels": [
+        "value"
+      ],
+      "sampling_rate_hz": 100
+    }
+  ],
+  "outputs": [
+    {
+      "name": "events",
+      "type": "interval"
+    }
+  ],
+  "inference": {
+    "mode": "whole_signal",
+    "threshold": 0.5
+  },
+  "parameters": [],
+  "output_mappings": [
+    {
+      "output_name": "events",
+      "lane": "Events",
+      "label": "Event"
+    }
+  ]
+}

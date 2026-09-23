@@ -1,0 +1,73 @@
+{
+  "cmf_version": "1.1",
+  "name": "Welch Freeze Index exemplar",
+  "version": "3.0.0",
+  "description": "Windowed FOG annotation exemplar using the same three-second Welch Freeze Index estimator as manuscript analysis E2 and a fixed one-feature logistic classifier calibrated on the FOG-COA development corpus.",
+  "license": "MIT",
+  "runtime": {
+    "type": "wrapper",
+    "entry": "wrapper.py"
+  },
+  "requirements": [
+    {
+      "package": "numpy",
+      "import": "numpy",
+      "install_hint": "pip install numpy"
+    },
+    {
+      "package": "scipy",
+      "import": "scipy",
+      "install_hint": "pip install scipy"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "accel_window",
+      "type": "signal",
+      "channels": ["acc_z"],
+      "sampling_rate_hz": 128,
+      "description": "Vertical acceleration proxy from the left-shank sensor; bind the physical vertical axis explicitly."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "fog_probability",
+      "type": "probability",
+      "labels": ["no_fog", "fog"]
+    }
+  ],
+  "estimator": {
+    "profile": "Three-second Welch Freeze Index used in manuscript E2",
+    "window_ms": 3000,
+    "stride_ms": 500,
+    "timestamp_anchor": "window centre",
+    "preprocessing": "SciPy Welch defaults with nperseg=min(256, window samples)",
+    "spectral_estimator": "Welch power spectral density",
+    "locomotor_band_hz": [0.5, 3.0],
+    "freeze_band_hz": [3.0, 8.0],
+    "ratio": "freeze_power / locomotor_power",
+    "scaling": "base-10 logarithm",
+    "normalization": "none",
+    "score_smoothing": "none"
+  },
+  "inference": {
+    "mode": "windowed",
+    "window_size_ms": 3000,
+    "stride_ms": 500,
+    "window_anchor": "start",
+    "terminal_window": "drop",
+    "threshold": 0.5,
+    "postprocessing": {
+      "merge_gap_ms": 0,
+      "min_duration_ms": 0
+    }
+  },
+  "parameters": [],
+  "output_mappings": [
+    {
+      "output_name": "fog_probability",
+      "lane": "FOG",
+      "label": "FOG"
+    }
+  ]
+}

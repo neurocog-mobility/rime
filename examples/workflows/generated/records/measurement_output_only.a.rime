@@ -1,0 +1,259 @@
+{
+  "@context": {
+    "prov": "http://www.w3.org/ns/prov#",
+    "rime": "urn:rime:vocab:",
+    "rime:data": {
+      "@type": "@json"
+    }
+  },
+  "@id": "urn:uuid:17b96cdb-ff18-464c-a2e9-31efc6b22893",
+  "@type": "rime:Document",
+  "rime:version": "1.1",
+  "rime:createdAt": "2026-09-22T02:15:33.823601+00:00",
+  "rime:records": [
+    {
+      "@id": "urn:rime:example:comparison-annotations-a:count-result"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "urn:rime:example:comparison-source",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "signal",
+        "file_name": "synthetic.csv",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "@id": "urn:rime:example:comparison-model",
+      "@type": [
+        "prov:Agent"
+      ],
+      "rime:data": {
+        "name": "Synthetic model",
+        "kind": "model"
+      }
+    },
+    {
+      "@id": "urn:rime:example:comparison-package",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "model_package",
+        "file_name": "synthetic.cmf",
+        "sha256": null,
+        "synthetic": true,
+        "manifest": [
+          {
+            "file_name": "fixture.json",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        ],
+        "scope": "Synthetic example",
+        "digest_scope": "Synthetic fixture archive unavailable"
+      }
+    },
+    {
+      "@id": "urn:rime:example:comparison-production-a",
+      "@type": [
+        "prov:Activity",
+        "rime:AnnotationProduction"
+      ],
+      "rime:data": {
+        "method": "computational",
+        "description": "Synthetic comparison branch",
+        "clinical_definition": {
+          "status": "known",
+          "description": "Synthetic events"
+        },
+        "execution_specification": {
+          "threshold": 0.5
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:example:comparison-source"
+        },
+        {
+          "@id": "urn:rime:example:comparison-package"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:comparison-source"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:comparison-package"
+          },
+          "prov:hadRole": {
+            "@id": "rime:model_package"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": [
+        {
+          "@id": "urn:rime:example:comparison-model"
+        }
+      ]
+    },
+    {
+      "@id": "urn:rime:example:comparison-annotations-a",
+      "@type": [
+        "prov:Entity",
+        "rime:AnnotationSet"
+      ],
+      "rime:data": {
+        "annotations": [
+          {
+            "id": "0",
+            "start_ms": 1000,
+            "end_ms": 3000,
+            "event_type": "interval",
+            "lane": "FOG",
+            "label": "FOG"
+          },
+          {
+            "id": "1",
+            "start_ms": 6000,
+            "end_ms": 8000,
+            "event_type": "interval",
+            "lane": "FOG",
+            "label": "FOG"
+          }
+        ],
+        "timeline": "synthetic:ms",
+        "status": "retained",
+        "review_status": "unreviewed"
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:example:comparison-production-a"
+      }
+    },
+    {
+      "@id": "urn:rime:example:comparison-annotations-a:observation",
+      "@type": [
+        "prov:Entity",
+        "rime:ObservationPeriod"
+      ],
+      "rime:data": {
+        "timeline": "synthetic:ms",
+        "intervals": [
+          [
+            0,
+            10000
+          ]
+        ]
+      }
+    },
+    {
+      "@id": "urn:rime:example:comparison-annotations-a:count-definition",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "count",
+        "version": "1",
+        "unit": "count",
+        "lane": "FOG",
+        "label": "FOG"
+      }
+    },
+    {
+      "@id": "urn:rime:example:comparison-annotations-a:count-calculation",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1"
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:example:comparison-annotations-a"
+        },
+        {
+          "@id": "urn:rime:example:comparison-annotations-a:observation"
+        },
+        {
+          "@id": "urn:rime:example:comparison-annotations-a:count-definition"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:comparison-annotations-a"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:comparison-annotations-a:observation"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:comparison-annotations-a:count-definition"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:example:comparison-annotations-a:count-result",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 2,
+        "unit": "count",
+        "covered_ms": 4000.0,
+        "eligible_ms": 10000.0,
+        "contributors": [
+          "0",
+          "1"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:example:comparison-annotations-a:count-calculation"
+      }
+    }
+  ]
+}

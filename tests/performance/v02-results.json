@@ -1,0 +1,187 @@
+{
+  "platform": "macOS-26.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.2",
+  "qt_platform": "offscreen",
+  "repeats": 3,
+  "workloads": {
+    "100": {
+      "workspace_save": {
+        "median_ms": 1.91,
+        "max_ms": 2.48
+      },
+      "workspace_open": {
+        "median_ms": 1.69,
+        "max_ms": 1.85
+      },
+      "three_measurement_preview": {
+        "median_ms": 0.56,
+        "max_ms": 0.71
+      },
+      "edit_and_undo": {
+        "median_ms": 1.14,
+        "max_ms": 1.27
+      },
+      "capture": {
+        "median_ms": 14.3,
+        "max_ms": 17.13
+      },
+      "document_write": {
+        "median_ms": 1.05,
+        "max_ms": 1.54
+      },
+      "document_read": {
+        "median_ms": 11.56,
+        "max_ms": 11.66
+      },
+      "verify_three_results": {
+        "median_ms": 1.75,
+        "max_ms": 1.83
+      },
+      "inspection_graph": {
+        "median_ms": 1.03,
+        "max_ms": 1.04
+      },
+      "equal_record_overlay": {
+        "median_ms": 8.93,
+        "max_ms": 14.68
+      },
+      "graph_layout_and_paint": {
+        "median_ms": 3.66,
+        "max_ms": 5.25
+      },
+      "timeline_paint": {
+        "median_ms": 2.16,
+        "max_ms": 7.4
+      },
+      "document_bytes": 44160
+    },
+    "1000": {
+      "workspace_save": {
+        "median_ms": 7.23,
+        "max_ms": 7.68
+      },
+      "workspace_open": {
+        "median_ms": 11.4,
+        "max_ms": 12.09
+      },
+      "three_measurement_preview": {
+        "median_ms": 6.06,
+        "max_ms": 8.47
+      },
+      "edit_and_undo": {
+        "median_ms": 8.37,
+        "max_ms": 29.31
+      },
+      "capture": {
+        "median_ms": 64.69,
+        "max_ms": 64.95
+      },
+      "document_write": {
+        "median_ms": 3.79,
+        "max_ms": 4.16
+      },
+      "document_read": {
+        "median_ms": 49.08,
+        "max_ms": 49.18
+      },
+      "verify_three_results": {
+        "median_ms": 12.25,
+        "max_ms": 12.26
+      },
+      "inspection_graph": {
+        "median_ms": 5.67,
+        "max_ms": 5.74
+      },
+      "equal_record_overlay": {
+        "median_ms": 56.09,
+        "max_ms": 56.89
+      },
+      "graph_layout_and_paint": {
+        "median_ms": 3.58,
+        "max_ms": 5.01
+      },
+      "timeline_paint": {
+        "median_ms": 16.91,
+        "max_ms": 34.43
+      },
+      "document_bytes": 278169
+    },
+    "10000": {
+      "workspace_save": {
+        "median_ms": 68.16,
+        "max_ms": 87.72
+      },
+      "workspace_open": {
+        "median_ms": 111.37,
+        "max_ms": 115.32
+      },
+      "three_measurement_preview": {
+        "median_ms": 45.67,
+        "max_ms": 73.33
+      },
+      "edit_and_undo": {
+        "median_ms": 78.25,
+        "max_ms": 83.65
+      },
+      "capture": {
+        "median_ms": 583.65,
+        "max_ms": 588.71
+      },
+      "document_write": {
+        "median_ms": 29.82,
+        "max_ms": 30.75
+      },
+      "document_read": {
+        "median_ms": 439.28,
+        "max_ms": 451.68
+      },
+      "verify_three_results": {
+        "median_ms": 127.58,
+        "max_ms": 138.66
+      },
+      "inspection_graph": {
+        "median_ms": 53.6,
+        "max_ms": 82.77
+      },
+      "equal_record_overlay": {
+        "median_ms": 574.26,
+        "max_ms": 590.94
+      },
+      "graph_layout_and_paint": {
+        "median_ms": 3.29,
+        "max_ms": 4.77
+      },
+      "timeline_paint": {
+        "median_ms": 163.41,
+        "max_ms": 329.35
+      },
+      "document_bytes": 2672178
+    }
+  },
+  "warm_shell_start": {
+    "median_ms": 10.58,
+    "max_ms": 137.45
+  },
+  "signal_30min_100hz_3channels": {
+    "csv_load": {
+      "median_ms": 60.62,
+      "max_ms": 62.47
+    },
+    "configure_and_paint": {
+      "median_ms": 91.71,
+      "max_ms": 92.04
+    }
+  },
+  "two_video_640x360_30fps": {
+    "elapsed_s": 2.006,
+    "delivered_frames": [
+      58,
+      58
+    ],
+    "delivered_fps": [
+      28.9,
+      28.9
+    ],
+    "position_difference_ms": 0
+  }
+}

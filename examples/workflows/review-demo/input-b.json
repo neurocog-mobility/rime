@@ -1,0 +1,167 @@
+{
+  "format": "rime-annotation-workspace",
+  "version": "0.3",
+  "id": "fbb06ea46378400c84d6fdc2e54c304b",
+  "name": "Illustrative annotator B",
+  "protocol": {
+    "version": "1",
+    "name": "Synthetic workflow",
+    "lanes": [
+      {
+        "name": "Events",
+        "level": 1,
+        "color": "#4477aa",
+        "labels": [
+          "Event"
+        ],
+        "allow_overlap": true,
+        "lane_type": "interval"
+      }
+    ],
+    "groups": [],
+    "rules": [],
+    "measurements": [
+      {
+        "id": "covered_duration",
+        "name": "covered_duration",
+        "calculation": "covered_duration",
+        "events": {
+          "lane": "Events",
+          "label": "Event"
+        },
+        "scope": null,
+        "version": "1",
+        "calculation_version": "1"
+      },
+      {
+        "id": "percentage_coverage",
+        "name": "percentage_coverage",
+        "calculation": "percentage_coverage",
+        "events": {
+          "lane": "Events",
+          "label": "Event"
+        },
+        "scope": null,
+        "version": "1",
+        "calculation_version": "1"
+      },
+      {
+        "id": "count",
+        "name": "count",
+        "calculation": "count",
+        "events": {
+          "lane": "Events",
+          "label": "Event"
+        },
+        "scope": null,
+        "version": "1",
+        "calculation_version": "1"
+      }
+    ]
+  },
+  "research_context": {},
+  "sources": [
+    {
+      "kind": "video",
+      "path": "../generated/evidence/video-1.avi",
+      "config": {
+        "id": "source-0092fa5d83c04d58a6dd7be67c157d77",
+        "file_name": "",
+        "name": "",
+        "role": "primary",
+        "offset_ms": 0.0,
+        "fps_override": null,
+        "sync_method": "",
+        "label": "Video 1"
+      }
+    },
+    {
+      "kind": "video",
+      "path": "../generated/evidence/video-2.avi",
+      "config": {
+        "id": "source-6c39bcac87bf4ca993a0bdeeff25b523",
+        "file_name": "",
+        "name": "",
+        "role": "secondary",
+        "offset_ms": 0.0,
+        "fps_override": null,
+        "sync_method": "",
+        "label": "Video 2"
+      }
+    },
+    {
+      "kind": "signal",
+      "path": "../generated/evidence/signal.csv",
+      "config": {
+        "type": "signal",
+        "format": "csv",
+        "sampling_rate_hz": 100,
+        "time_column": "time",
+        "id": "source-0007044ee7ed408e9615810b4b9fa564",
+        "file_name": "",
+        "name": "",
+        "time_reference": "relative",
+        "time_unit": "seconds",
+        "offset_ms": 0.0,
+        "sync_method": "",
+        "channels": [
+          "value"
+        ],
+        "units": {}
+      }
+    }
+  ],
+  "imports": [],
+  "annotations": [
+    {
+      "id": "demo-B-0",
+      "lane": "Events",
+      "label": "Event",
+      "start_ms": 2200,
+      "end_ms": 4500,
+      "event_type": "interval",
+      "source": "manual",
+      "ghost": false,
+      "confidence": 1.0,
+      "confidence_type": "human_rating",
+      "human_modified": false,
+      "origin_confidence": null,
+      "origin_start_ms": null,
+      "origin_end_ms": null
+    },
+    {
+      "id": "demo-B-1",
+      "lane": "Events",
+      "label": "Event",
+      "start_ms": 7400,
+      "end_ms": 9300,
+      "event_type": "interval",
+      "source": "manual",
+      "ghost": false,
+      "confidence": 1.0,
+      "confidence_type": "human_rating",
+      "human_modified": false,
+      "origin_confidence": null,
+      "origin_start_ms": null,
+      "origin_end_ms": null
+    },
+    {
+      "id": "demo-B-2",
+      "lane": "Events",
+      "label": "Event",
+      "start_ms": 14000,
+      "end_ms": 16000,
+      "event_type": "interval",
+      "source": "manual",
+      "ghost": false,
+      "confidence": 1.0,
+      "confidence_type": "human_rating",
+      "human_modified": false,
+      "origin_confidence": null,
+      "origin_start_ms": null,
+      "origin_end_ms": null
+    }
+  ],
+  "rater": "Synthetic B",
+  "view": {}
+}

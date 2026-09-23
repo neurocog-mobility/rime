@@ -1,0 +1,1345 @@
+{
+  "@context": {
+    "prov": "http://www.w3.org/ns/prov#",
+    "rime": "urn:rime:vocab:",
+    "rime:data": {
+      "@type": "@json"
+    }
+  },
+  "@id": "urn:uuid:e574d6b3-8d55-440a-883c-f21252f3e9ed",
+  "@type": "rime:Document",
+  "rime:version": "1.1",
+  "rime:createdAt": "2026-09-22T02:15:33.796104+00:00",
+  "rime:records": [
+    {
+      "@id": "urn:rime:MeasurementResult:23f6949f74eab0fc832628bea971540300aed622344b6197e62a537707bc20d8"
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:bb4a9aa225a0c3db59504efb1e3d4831dd2b0d7f9b47baebdffdb55ad6391bb1"
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:5390cf7ee22eee010047b114826b36df7b4f4eb00c7d5eba330ae50aeaeae3c0"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:0",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-1.avi",
+        "sha256": "cbb743b6e023773741ad044ba8b74b479b92cb68e4f82d8c15349d8aab5ac293"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:1",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-2.avi",
+        "sha256": "f1868334d60af3b8ad009838b9dbfcca06db9797f42c9fd894c70de6ca567f28"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:2",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "signal",
+        "file_name": "signal.csv",
+        "sha256": "aed73f925a8782d21d773cdd41249d927372f45e03cbe30b4763c50d93f06a99"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:3",
+      "@type": [
+        "prov:Agent"
+      ],
+      "rime:data": {
+        "name": "Synthetic A",
+        "kind": "person"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:4",
+      "@type": [
+        "prov:Activity",
+        "rime:AnnotationProduction"
+      ],
+      "rime:data": {
+        "method": "manual",
+        "description": "Manual annotation on the workspace evidence timeline",
+        "clinical_definition": {
+          "status": "known",
+          "description": "Workspace annotation protocol",
+          "protocol_id": "Synthetic workflow",
+          "protocol_version": "1"
+        },
+        "metadata": {
+          "source_configurations": [
+            {
+              "source": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:0",
+              "configuration": {
+                "id": "source-0092fa5d83c04d58a6dd7be67c157d77",
+                "file_name": "",
+                "name": "",
+                "role": "primary",
+                "offset_ms": 0.0,
+                "fps_override": null,
+                "sync_method": "",
+                "label": "Video 1"
+              }
+            },
+            {
+              "source": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:1",
+              "configuration": {
+                "id": "source-6c39bcac87bf4ca993a0bdeeff25b523",
+                "file_name": "",
+                "name": "",
+                "role": "secondary",
+                "offset_ms": 0.0,
+                "fps_override": null,
+                "sync_method": "",
+                "label": "Video 2"
+              }
+            },
+            {
+              "source": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:2",
+              "configuration": {
+                "type": "signal",
+                "format": "csv",
+                "sampling_rate_hz": 100,
+                "time_column": "time",
+                "id": "source-0007044ee7ed408e9615810b4b9fa564",
+                "file_name": "",
+                "name": "",
+                "time_reference": "relative",
+                "time_unit": "seconds",
+                "offset_ms": 0.0,
+                "sync_method": "",
+                "channels": [
+                  "value"
+                ],
+                "units": {}
+              }
+            }
+          ],
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          },
+          "alignment_validation": "Not independently verified",
+          "protocol_assistance": []
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:0"
+        },
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:1"
+        },
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:2"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:0"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:1"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:2"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": [
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:3"
+        }
+      ]
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:5",
+      "@type": [
+        "prov:Entity",
+        "rime:AnnotationSet"
+      ],
+      "rime:data": {
+        "annotations": [
+          {
+            "id": "0",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 2000,
+            "end_ms": 4000,
+            "event_type": "interval"
+          },
+          {
+            "id": "1",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 7000,
+            "end_ms": 9000,
+            "event_type": "interval"
+          }
+        ],
+        "timeline": "urn:rime:timeline:96e41c05a99c4cefb14a6a2786f71280",
+        "status": "retained",
+        "review_status": "unreviewed",
+        "research_context": {}
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:4"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:0",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-1.avi",
+        "sha256": "cbb743b6e023773741ad044ba8b74b479b92cb68e4f82d8c15349d8aab5ac293"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:1",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-2.avi",
+        "sha256": "f1868334d60af3b8ad009838b9dbfcca06db9797f42c9fd894c70de6ca567f28"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:2",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "signal",
+        "file_name": "signal.csv",
+        "sha256": "aed73f925a8782d21d773cdd41249d927372f45e03cbe30b4763c50d93f06a99"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:3",
+      "@type": [
+        "prov:Agent"
+      ],
+      "rime:data": {
+        "name": "Synthetic B",
+        "kind": "person"
+      }
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:4",
+      "@type": [
+        "prov:Activity",
+        "rime:AnnotationProduction"
+      ],
+      "rime:data": {
+        "method": "manual",
+        "description": "Manual annotation on the workspace evidence timeline",
+        "clinical_definition": {
+          "status": "known",
+          "description": "Workspace annotation protocol",
+          "protocol_id": "Synthetic workflow",
+          "protocol_version": "1"
+        },
+        "metadata": {
+          "source_configurations": [
+            {
+              "source": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:0",
+              "configuration": {
+                "id": "source-0092fa5d83c04d58a6dd7be67c157d77",
+                "file_name": "",
+                "name": "",
+                "role": "primary",
+                "offset_ms": 0.0,
+                "fps_override": null,
+                "sync_method": "",
+                "label": "Video 1"
+              }
+            },
+            {
+              "source": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:1",
+              "configuration": {
+                "id": "source-6c39bcac87bf4ca993a0bdeeff25b523",
+                "file_name": "",
+                "name": "",
+                "role": "secondary",
+                "offset_ms": 0.0,
+                "fps_override": null,
+                "sync_method": "",
+                "label": "Video 2"
+              }
+            },
+            {
+              "source": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:2",
+              "configuration": {
+                "type": "signal",
+                "format": "csv",
+                "sampling_rate_hz": 100,
+                "time_column": "time",
+                "id": "source-0007044ee7ed408e9615810b4b9fa564",
+                "file_name": "",
+                "name": "",
+                "time_reference": "relative",
+                "time_unit": "seconds",
+                "offset_ms": 0.0,
+                "sync_method": "",
+                "channels": [
+                  "value"
+                ],
+                "units": {}
+              }
+            }
+          ],
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          },
+          "alignment_validation": "Not independently verified",
+          "protocol_assistance": []
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:0"
+        },
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:1"
+        },
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:2"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:0"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:1"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:2"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": [
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:3"
+        }
+      ]
+    },
+    {
+      "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:5",
+      "@type": [
+        "prov:Entity",
+        "rime:AnnotationSet"
+      ],
+      "rime:data": {
+        "annotations": [
+          {
+            "id": "0",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 2000,
+            "end_ms": 4500,
+            "event_type": "interval"
+          },
+          {
+            "id": "1",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 7000,
+            "end_ms": 9500,
+            "event_type": "interval"
+          }
+        ],
+        "timeline": "urn:rime:timeline:96e41c05a99c4cefb14a6a2786f71280",
+        "status": "retained",
+        "review_status": "unreviewed",
+        "research_context": {}
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:4"
+      }
+    },
+    {
+      "@id": "urn:rime:reviewer:61fdfd28fc6a49daa792119701b653ddf9a09ddbf84a82f6953086b15c4a0350",
+      "@type": [
+        "prov:Agent"
+      ],
+      "rime:data": {
+        "name": "Synthetic reviewer",
+        "kind": "person"
+      }
+    },
+    {
+      "@id": "urn:rime:review-evidence:22da6572b910dfb46ddcf84f72434f2909502da36ff8e44cd4410f1cc601f4ce",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-1.avi",
+        "sha256": "cbb743b6e023773741ad044ba8b74b479b92cb68e4f82d8c15349d8aab5ac293"
+      }
+    },
+    {
+      "@id": "urn:rime:review-evidence:b271d2267a31fc82161714cd6f4556bfa545de31a324f358678fa954b2c60c48",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-2.avi",
+        "sha256": "f1868334d60af3b8ad009838b9dbfcca06db9797f42c9fd894c70de6ca567f28"
+      }
+    },
+    {
+      "@id": "urn:rime:review-evidence:8f940c1dab849d23d6359f44209a92e3a3569a06ad7124f7acd893c2ce248b52",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "signal",
+        "file_name": "signal.csv",
+        "sha256": "aed73f925a8782d21d773cdd41249d927372f45e03cbe30b4763c50d93f06a99"
+      }
+    },
+    {
+      "@id": "urn:rime:review:c8aba32b0715b0d973eefc7cc6fa9161943afadfafdc7f90abb86f6205045f89",
+      "@type": [
+        "prov:Activity",
+        "rime:AnnotationReview"
+      ],
+      "rime:data": {
+        "method": "adjudication",
+        "decisions": [
+          {
+            "action": "union",
+            "extent": [
+              [
+                2000,
+                9500
+              ]
+            ],
+            "inputs": [
+              {
+                "entity": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:5",
+                "annotation": "0"
+              },
+              {
+                "entity": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:5",
+                "annotation": "0"
+              },
+              {
+                "entity": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:5",
+                "annotation": "1"
+              },
+              {
+                "entity": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:5",
+                "annotation": "1"
+              }
+            ],
+            "outputs": [
+              "59fd455e22584c028dd2b903b4d464b1:0",
+              "59fd455e22584c028dd2b903b4d464b1:1"
+            ],
+            "note": ""
+          }
+        ],
+        "metadata": {
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          },
+          "decision_choices": {
+            "59fd455e22584c028dd2b903b4d464b1": "union"
+          },
+          "source_configurations": [
+            {
+              "id": "source-0092fa5d83c04d58a6dd7be67c157d77",
+              "file_name": "",
+              "name": "",
+              "role": "primary",
+              "offset_ms": 0.0,
+              "fps_override": null,
+              "sync_method": "",
+              "label": "Video 1"
+            },
+            {
+              "id": "source-6c39bcac87bf4ca993a0bdeeff25b523",
+              "file_name": "",
+              "name": "",
+              "role": "secondary",
+              "offset_ms": 0.0,
+              "fps_override": null,
+              "sync_method": "",
+              "label": "Video 2"
+            },
+            {
+              "type": "signal",
+              "format": "csv",
+              "sampling_rate_hz": 100,
+              "time_column": "time",
+              "id": "source-0007044ee7ed408e9615810b4b9fa564",
+              "file_name": "",
+              "name": "",
+              "time_reference": "relative",
+              "time_unit": "seconds",
+              "offset_ms": 0.0,
+              "sync_method": "",
+              "channels": [
+                "value"
+              ],
+              "units": {}
+            }
+          ]
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:5"
+        },
+        {
+          "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:5"
+        },
+        {
+          "@id": "urn:rime:review-evidence:22da6572b910dfb46ddcf84f72434f2909502da36ff8e44cd4410f1cc601f4ce"
+        },
+        {
+          "@id": "urn:rime:review-evidence:b271d2267a31fc82161714cd6f4556bfa545de31a324f358678fa954b2c60c48"
+        },
+        {
+          "@id": "urn:rime:review-evidence:8f940c1dab849d23d6359f44209a92e3a3569a06ad7124f7acd893c2ce248b52"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:0:5"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotation_input"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review:96e41c05a99c4cefb14a6a2786f71280:input:1:5"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotation_input"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review-evidence:22da6572b910dfb46ddcf84f72434f2909502da36ff8e44cd4410f1cc601f4ce"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review-evidence:b271d2267a31fc82161714cd6f4556bfa545de31a324f358678fa954b2c60c48"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review-evidence:8f940c1dab849d23d6359f44209a92e3a3569a06ad7124f7acd893c2ce248b52"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": [
+        {
+          "@id": "urn:rime:reviewer:61fdfd28fc6a49daa792119701b653ddf9a09ddbf84a82f6953086b15c4a0350"
+        }
+      ]
+    },
+    {
+      "@id": "urn:rime:review-output:8de1ee1901616a349b2f36c88c27783f7c7e063a5c527c53d0d0b0f5adead911",
+      "@type": [
+        "prov:Entity",
+        "rime:AnnotationSet"
+      ],
+      "rime:data": {
+        "annotations": [
+          {
+            "id": "59fd455e22584c028dd2b903b4d464b1:0",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 2000,
+            "end_ms": 4500,
+            "event_type": "interval"
+          },
+          {
+            "id": "59fd455e22584c028dd2b903b4d464b1:1",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 7000,
+            "end_ms": 9500,
+            "event_type": "interval"
+          }
+        ],
+        "timeline": "urn:rime:timeline:96e41c05a99c4cefb14a6a2786f71280",
+        "status": "retained",
+        "review_status": "complete",
+        "research_context": {}
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:review:c8aba32b0715b0d973eefc7cc6fa9161943afadfafdc7f90abb86f6205045f89"
+      }
+    },
+    {
+      "@id": "urn:rime:ObservationPeriod:1279a7c644f561b73ae6cc71a3f66ea99d638e1b43d7eca33c685a759e2bb304",
+      "@type": [
+        "prov:Entity",
+        "rime:ObservationPeriod"
+      ],
+      "rime:data": {
+        "timeline": "urn:rime:timeline:96e41c05a99c4cefb14a6a2786f71280",
+        "intervals": [
+          [
+            0,
+            20000
+          ]
+        ]
+      }
+    },
+    {
+      "@id": "urn:rime:CalculationDefinition:d78a4d67af5cf5a1846c816d0f59aa83ed6fb111b23d3a496feb1ef946cd6ae0",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "covered_duration",
+        "version": "1",
+        "lane": "Events",
+        "label": "Event",
+        "unit": "s"
+      }
+    },
+    {
+      "@id": "urn:rime:MeasurementCalculation:38a4a47b2970951d330ffda97ce54bfbd49555ffca7f27558bb85dba7c44a698",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1",
+          "outcome_id": "covered_duration",
+          "outcome_name": "covered_duration",
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          }
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:review-output:8de1ee1901616a349b2f36c88c27783f7c7e063a5c527c53d0d0b0f5adead911"
+        },
+        {
+          "@id": "urn:rime:ObservationPeriod:1279a7c644f561b73ae6cc71a3f66ea99d638e1b43d7eca33c685a759e2bb304"
+        },
+        {
+          "@id": "urn:rime:CalculationDefinition:d78a4d67af5cf5a1846c816d0f59aa83ed6fb111b23d3a496feb1ef946cd6ae0"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review-output:8de1ee1901616a349b2f36c88c27783f7c7e063a5c527c53d0d0b0f5adead911"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:ObservationPeriod:1279a7c644f561b73ae6cc71a3f66ea99d638e1b43d7eca33c685a759e2bb304"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:CalculationDefinition:d78a4d67af5cf5a1846c816d0f59aa83ed6fb111b23d3a496feb1ef946cd6ae0"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:23f6949f74eab0fc832628bea971540300aed622344b6197e62a537707bc20d8",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 5.0,
+        "unit": "s",
+        "covered_ms": 5000.0,
+        "eligible_ms": 20000.0,
+        "contributors": [
+          "59fd455e22584c028dd2b903b4d464b1:0",
+          "59fd455e22584c028dd2b903b4d464b1:1"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:MeasurementCalculation:38a4a47b2970951d330ffda97ce54bfbd49555ffca7f27558bb85dba7c44a698"
+      }
+    },
+    {
+      "@id": "urn:rime:CalculationDefinition:a77eba4fd5f3a1e25bb3bca1f75a531bc1af9973082fbb94d0a7a61b0381acf8",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "percentage_coverage",
+        "version": "1",
+        "lane": "Events",
+        "label": "Event",
+        "unit": "%"
+      }
+    },
+    {
+      "@id": "urn:rime:MeasurementCalculation:725cc1bc2807e678a70eefea09b5ca3899301dc3839c720fccd6ccc155f089ba",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1",
+          "outcome_id": "percentage_coverage",
+          "outcome_name": "percentage_coverage",
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          }
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:review-output:8de1ee1901616a349b2f36c88c27783f7c7e063a5c527c53d0d0b0f5adead911"
+        },
+        {
+          "@id": "urn:rime:ObservationPeriod:1279a7c644f561b73ae6cc71a3f66ea99d638e1b43d7eca33c685a759e2bb304"
+        },
+        {
+          "@id": "urn:rime:CalculationDefinition:a77eba4fd5f3a1e25bb3bca1f75a531bc1af9973082fbb94d0a7a61b0381acf8"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review-output:8de1ee1901616a349b2f36c88c27783f7c7e063a5c527c53d0d0b0f5adead911"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:ObservationPeriod:1279a7c644f561b73ae6cc71a3f66ea99d638e1b43d7eca33c685a759e2bb304"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:CalculationDefinition:a77eba4fd5f3a1e25bb3bca1f75a531bc1af9973082fbb94d0a7a61b0381acf8"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:bb4a9aa225a0c3db59504efb1e3d4831dd2b0d7f9b47baebdffdb55ad6391bb1",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 25.0,
+        "unit": "%",
+        "covered_ms": 5000.0,
+        "eligible_ms": 20000.0,
+        "contributors": [
+          "59fd455e22584c028dd2b903b4d464b1:0",
+          "59fd455e22584c028dd2b903b4d464b1:1"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:MeasurementCalculation:725cc1bc2807e678a70eefea09b5ca3899301dc3839c720fccd6ccc155f089ba"
+      }
+    },
+    {
+      "@id": "urn:rime:CalculationDefinition:860c9aaf6f6dbc4dc49fbc412508305cc28518fef9771340746380c1b647d2d9",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "count",
+        "version": "1",
+        "lane": "Events",
+        "label": "Event",
+        "unit": "count"
+      }
+    },
+    {
+      "@id": "urn:rime:MeasurementCalculation:be26d0593a49a0982e355c266ecaaef5887eed87a3f3e8cb8992e361ebbf0e58",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1",
+          "outcome_id": "count",
+          "outcome_name": "count",
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          }
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:review-output:8de1ee1901616a349b2f36c88c27783f7c7e063a5c527c53d0d0b0f5adead911"
+        },
+        {
+          "@id": "urn:rime:ObservationPeriod:1279a7c644f561b73ae6cc71a3f66ea99d638e1b43d7eca33c685a759e2bb304"
+        },
+        {
+          "@id": "urn:rime:CalculationDefinition:860c9aaf6f6dbc4dc49fbc412508305cc28518fef9771340746380c1b647d2d9"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:review-output:8de1ee1901616a349b2f36c88c27783f7c7e063a5c527c53d0d0b0f5adead911"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:ObservationPeriod:1279a7c644f561b73ae6cc71a3f66ea99d638e1b43d7eca33c685a759e2bb304"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:CalculationDefinition:860c9aaf6f6dbc4dc49fbc412508305cc28518fef9771340746380c1b647d2d9"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:5390cf7ee22eee010047b114826b36df7b4f4eb00c7d5eba330ae50aeaeae3c0",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 2,
+        "unit": "count",
+        "covered_ms": 5000.0,
+        "eligible_ms": 20000.0,
+        "contributors": [
+          "59fd455e22584c028dd2b903b4d464b1:0",
+          "59fd455e22584c028dd2b903b4d464b1:1"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:MeasurementCalculation:be26d0593a49a0982e355c266ecaaef5887eed87a3f3e8cb8992e361ebbf0e58"
+      }
+    }
+  ]
+}

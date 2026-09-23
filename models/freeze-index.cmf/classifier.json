@@ -1,0 +1,39 @@
+{
+  "classifier": "class-balanced_univariate_logistic_regression",
+  "feature": "three-second Welch log Freeze Index",
+  "coefficient": 1.0460972780920308,
+  "intercept": -0.6823893835873076,
+  "calibration": {
+    "status": "fitted",
+    "target": "FOG membership at the centre of each complete FI window",
+    "corpus": "FOG-COA development corpus",
+    "cohort_manifest": "manuscript/analysis/02_coordinate_offset/welch_3s_restored/cohort_manifest.csv",
+    "cohort_manifest_sha256": "30e6e23a01590c49255c9cd6fe720366aaa9c6f6dd475779d185853d36bca3ab",
+    "window_schedule": "complete windows on a Task-origin grid",
+    "n_trials": 49,
+    "n_participants": 7,
+    "n_windows": 3177,
+    "n_fog_windows": 1617,
+    "fog_window_fraction": 0.5089707271010387,
+    "class_weight": "balanced",
+    "apparent_auc": 0.6089953697096554,
+    "positive_fraction_at_0_5": 0.5067673906200818,
+    "decision_rule": {
+      "threshold": 0.5,
+      "basis": "conventional probability cutoff; not optimized on the analysis cohort",
+      "summary": {
+        "threshold": 0.5,
+        "mean_trial_iou": 0.3381653233915053,
+        "median_trial_iou": 0.29081675849976396,
+        "mean_absolute_pct_tf_error": 37.15727087913879,
+        "median_absolute_pct_tf_error": 28.592209836065564,
+        "median_reference_pct_tf": 26.276584259958973,
+        "median_predicted_pct_tf": 65.5992366412214,
+        "trials_at_or_above_90_pct_tf": 13,
+        "trials_with_zero_pct_tf": 2,
+        "positive_window_fraction": 0.5067673906200818
+      }
+    },
+    "note": "Development calibration for an executable CMF exemplar; not clinical validation."
+  }
+}

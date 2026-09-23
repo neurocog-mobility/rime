@@ -1,0 +1,754 @@
+{
+  "@context": {
+    "prov": "http://www.w3.org/ns/prov#",
+    "rime": "urn:rime:vocab:",
+    "rime:data": {
+      "@type": "@json"
+    }
+  },
+  "@id": "urn:uuid:d78bbc6e-d248-4a96-ad1e-ae7db2f2a64c",
+  "@type": "rime:Document",
+  "rime:version": "1.1",
+  "rime:createdAt": "2026-09-22T02:15:33.784370+00:00",
+  "rime:records": [
+    {
+      "@id": "urn:rime:MeasurementResult:2a1e4c7c39acdd8dde2a107d93eb4389c0b88d40bc9f644754b63cb66963bfd2"
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:fb5493172c2336b801500e744d8bcfb8ae9509a1e7f313d427e900ec7a364a34"
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:3e6efbbbd857021a2a776ed006ad9c62252e42421a33f124b1f28052079f3722"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "urn:rime:Source:d4b39b0189cac384fb5b1855cf1be5f534dec39e99f490b7c727a558e31feeb0",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-1.avi",
+        "sha256": "cbb743b6e023773741ad044ba8b74b479b92cb68e4f82d8c15349d8aab5ac293"
+      }
+    },
+    {
+      "@id": "urn:rime:Source:534fdb2283bebcb36145c563f188c28f5df7bc30e510c4bb98018dcc2ed57952",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "video",
+        "file_name": "video-2.avi",
+        "sha256": "f1868334d60af3b8ad009838b9dbfcca06db9797f42c9fd894c70de6ca567f28"
+      }
+    },
+    {
+      "@id": "urn:rime:Source:893ee9fb87c27f5145dee6c4b8e6322647c7706af0ec5e6141cd57ad1457d4fd",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "recording",
+        "modality": "signal",
+        "file_name": "signal.csv",
+        "sha256": "aed73f925a8782d21d773cdd41249d927372f45e03cbe30b4763c50d93f06a99"
+      }
+    },
+    {
+      "@id": "urn:rime:person:cc60756f205a1b37c23f0d9d7fc89e2b3bbd0840c89b637be8294dc658e96de7",
+      "@type": [
+        "prov:Agent"
+      ],
+      "rime:data": {
+        "name": "Synthetic A",
+        "kind": "person"
+      }
+    },
+    {
+      "@id": "urn:rime:AnnotationProduction:54399eedf0807261280563d9e55b5aa524c5bd727c20ec413159f77d135d2da3",
+      "@type": [
+        "prov:Activity",
+        "rime:AnnotationProduction"
+      ],
+      "rime:data": {
+        "method": "manual",
+        "description": "Manual annotation on the workspace evidence timeline",
+        "clinical_definition": {
+          "status": "known",
+          "description": "Workspace annotation protocol",
+          "protocol_id": "Synthetic workflow",
+          "protocol_version": "1"
+        },
+        "metadata": {
+          "source_configurations": [
+            {
+              "source": "urn:rime:Source:d4b39b0189cac384fb5b1855cf1be5f534dec39e99f490b7c727a558e31feeb0",
+              "configuration": {
+                "id": "source-0092fa5d83c04d58a6dd7be67c157d77",
+                "file_name": "",
+                "name": "",
+                "role": "primary",
+                "offset_ms": 0.0,
+                "fps_override": null,
+                "sync_method": "",
+                "label": "Video 1"
+              }
+            },
+            {
+              "source": "urn:rime:Source:534fdb2283bebcb36145c563f188c28f5df7bc30e510c4bb98018dcc2ed57952",
+              "configuration": {
+                "id": "source-6c39bcac87bf4ca993a0bdeeff25b523",
+                "file_name": "",
+                "name": "",
+                "role": "secondary",
+                "offset_ms": 0.0,
+                "fps_override": null,
+                "sync_method": "",
+                "label": "Video 2"
+              }
+            },
+            {
+              "source": "urn:rime:Source:893ee9fb87c27f5145dee6c4b8e6322647c7706af0ec5e6141cd57ad1457d4fd",
+              "configuration": {
+                "type": "signal",
+                "format": "csv",
+                "sampling_rate_hz": 100,
+                "time_column": "time",
+                "id": "source-0007044ee7ed408e9615810b4b9fa564",
+                "file_name": "",
+                "name": "",
+                "time_reference": "relative",
+                "time_unit": "seconds",
+                "offset_ms": 0.0,
+                "sync_method": "",
+                "channels": [
+                  "value"
+                ],
+                "units": {}
+              }
+            }
+          ],
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          },
+          "alignment_validation": "Not independently verified",
+          "protocol_assistance": []
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:Source:d4b39b0189cac384fb5b1855cf1be5f534dec39e99f490b7c727a558e31feeb0"
+        },
+        {
+          "@id": "urn:rime:Source:534fdb2283bebcb36145c563f188c28f5df7bc30e510c4bb98018dcc2ed57952"
+        },
+        {
+          "@id": "urn:rime:Source:893ee9fb87c27f5145dee6c4b8e6322647c7706af0ec5e6141cd57ad1457d4fd"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:Source:d4b39b0189cac384fb5b1855cf1be5f534dec39e99f490b7c727a558e31feeb0"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:Source:534fdb2283bebcb36145c563f188c28f5df7bc30e510c4bb98018dcc2ed57952"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:Source:893ee9fb87c27f5145dee6c4b8e6322647c7706af0ec5e6141cd57ad1457d4fd"
+          },
+          "prov:hadRole": {
+            "@id": "rime:recording"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0.0,
+              "method": "manual_offset"
+            }
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": [
+        {
+          "@id": "urn:rime:person:cc60756f205a1b37c23f0d9d7fc89e2b3bbd0840c89b637be8294dc658e96de7"
+        }
+      ]
+    },
+    {
+      "@id": "urn:rime:AnnotationSet:980fddbe9321b56a9450aa2ab2c4d4aa5559f94364b2e520269aeec57415e529",
+      "@type": [
+        "prov:Entity",
+        "rime:AnnotationSet"
+      ],
+      "rime:data": {
+        "annotations": [
+          {
+            "id": "0",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 2000,
+            "end_ms": 4000,
+            "event_type": "interval"
+          },
+          {
+            "id": "1",
+            "lane": "Events",
+            "label": "Event",
+            "start_ms": 7000,
+            "end_ms": 9000,
+            "event_type": "interval"
+          }
+        ],
+        "timeline": "urn:rime:timeline:c1dede42a5a04a64983572315777f3c8",
+        "status": "retained",
+        "review_status": "unreviewed",
+        "research_context": {}
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:AnnotationProduction:54399eedf0807261280563d9e55b5aa524c5bd727c20ec413159f77d135d2da3"
+      }
+    },
+    {
+      "@id": "urn:rime:ObservationPeriod:8734b855482c142ddfdfa237577c57ef09202bc604fdc568910bb69d18342e77",
+      "@type": [
+        "prov:Entity",
+        "rime:ObservationPeriod"
+      ],
+      "rime:data": {
+        "timeline": "urn:rime:timeline:c1dede42a5a04a64983572315777f3c8",
+        "intervals": [
+          [
+            0,
+            20000
+          ]
+        ]
+      }
+    },
+    {
+      "@id": "urn:rime:CalculationDefinition:d78a4d67af5cf5a1846c816d0f59aa83ed6fb111b23d3a496feb1ef946cd6ae0",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "covered_duration",
+        "version": "1",
+        "lane": "Events",
+        "label": "Event",
+        "unit": "s"
+      }
+    },
+    {
+      "@id": "urn:rime:MeasurementCalculation:03f2719d987fd34687cab27fdf83211964a1792b8d13cd4fd90541c144c570f2",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1",
+          "outcome_id": "covered_duration",
+          "outcome_name": "covered_duration",
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          }
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:AnnotationSet:980fddbe9321b56a9450aa2ab2c4d4aa5559f94364b2e520269aeec57415e529"
+        },
+        {
+          "@id": "urn:rime:ObservationPeriod:8734b855482c142ddfdfa237577c57ef09202bc604fdc568910bb69d18342e77"
+        },
+        {
+          "@id": "urn:rime:CalculationDefinition:d78a4d67af5cf5a1846c816d0f59aa83ed6fb111b23d3a496feb1ef946cd6ae0"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:AnnotationSet:980fddbe9321b56a9450aa2ab2c4d4aa5559f94364b2e520269aeec57415e529"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:ObservationPeriod:8734b855482c142ddfdfa237577c57ef09202bc604fdc568910bb69d18342e77"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:CalculationDefinition:d78a4d67af5cf5a1846c816d0f59aa83ed6fb111b23d3a496feb1ef946cd6ae0"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:2a1e4c7c39acdd8dde2a107d93eb4389c0b88d40bc9f644754b63cb66963bfd2",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 4.0,
+        "unit": "s",
+        "covered_ms": 4000.0,
+        "eligible_ms": 20000.0,
+        "contributors": [
+          "0",
+          "1"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:MeasurementCalculation:03f2719d987fd34687cab27fdf83211964a1792b8d13cd4fd90541c144c570f2"
+      }
+    },
+    {
+      "@id": "urn:rime:CalculationDefinition:a77eba4fd5f3a1e25bb3bca1f75a531bc1af9973082fbb94d0a7a61b0381acf8",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "percentage_coverage",
+        "version": "1",
+        "lane": "Events",
+        "label": "Event",
+        "unit": "%"
+      }
+    },
+    {
+      "@id": "urn:rime:MeasurementCalculation:2e4a5b8809c74f138cad42c80b94321c4a48d64958de9d1381bc53cc65ea2061",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1",
+          "outcome_id": "percentage_coverage",
+          "outcome_name": "percentage_coverage",
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          }
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:AnnotationSet:980fddbe9321b56a9450aa2ab2c4d4aa5559f94364b2e520269aeec57415e529"
+        },
+        {
+          "@id": "urn:rime:ObservationPeriod:8734b855482c142ddfdfa237577c57ef09202bc604fdc568910bb69d18342e77"
+        },
+        {
+          "@id": "urn:rime:CalculationDefinition:a77eba4fd5f3a1e25bb3bca1f75a531bc1af9973082fbb94d0a7a61b0381acf8"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:AnnotationSet:980fddbe9321b56a9450aa2ab2c4d4aa5559f94364b2e520269aeec57415e529"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:ObservationPeriod:8734b855482c142ddfdfa237577c57ef09202bc604fdc568910bb69d18342e77"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:CalculationDefinition:a77eba4fd5f3a1e25bb3bca1f75a531bc1af9973082fbb94d0a7a61b0381acf8"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:fb5493172c2336b801500e744d8bcfb8ae9509a1e7f313d427e900ec7a364a34",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 20.0,
+        "unit": "%",
+        "covered_ms": 4000.0,
+        "eligible_ms": 20000.0,
+        "contributors": [
+          "0",
+          "1"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:MeasurementCalculation:2e4a5b8809c74f138cad42c80b94321c4a48d64958de9d1381bc53cc65ea2061"
+      }
+    },
+    {
+      "@id": "urn:rime:CalculationDefinition:860c9aaf6f6dbc4dc49fbc412508305cc28518fef9771340746380c1b647d2d9",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "count",
+        "version": "1",
+        "lane": "Events",
+        "label": "Event",
+        "unit": "count"
+      }
+    },
+    {
+      "@id": "urn:rime:MeasurementCalculation:54213553b747b9ec5d2555edf40f1fd6d2f2f9cfcaa74de043c1eb8cace8a2de",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1",
+          "outcome_id": "count",
+          "outcome_name": "count",
+          "protocol": {
+            "version": "1",
+            "name": "Synthetic workflow",
+            "lanes": [
+              {
+                "name": "Events",
+                "level": 1,
+                "color": "#4477aa",
+                "labels": [
+                  "Event"
+                ],
+                "allow_overlap": true,
+                "lane_type": "interval"
+              }
+            ],
+            "groups": [],
+            "rules": [],
+            "measurements": [
+              {
+                "id": "covered_duration",
+                "name": "covered_duration",
+                "calculation": "covered_duration",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "percentage_coverage",
+                "name": "percentage_coverage",
+                "calculation": "percentage_coverage",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              },
+              {
+                "id": "count",
+                "name": "count",
+                "calculation": "count",
+                "events": {
+                  "lane": "Events",
+                  "label": "Event"
+                },
+                "scope": null,
+                "version": "1",
+                "calculation_version": "1"
+              }
+            ]
+          }
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:AnnotationSet:980fddbe9321b56a9450aa2ab2c4d4aa5559f94364b2e520269aeec57415e529"
+        },
+        {
+          "@id": "urn:rime:ObservationPeriod:8734b855482c142ddfdfa237577c57ef09202bc604fdc568910bb69d18342e77"
+        },
+        {
+          "@id": "urn:rime:CalculationDefinition:860c9aaf6f6dbc4dc49fbc412508305cc28518fef9771340746380c1b647d2d9"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:AnnotationSet:980fddbe9321b56a9450aa2ab2c4d4aa5559f94364b2e520269aeec57415e529"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:ObservationPeriod:8734b855482c142ddfdfa237577c57ef09202bc604fdc568910bb69d18342e77"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:CalculationDefinition:860c9aaf6f6dbc4dc49fbc412508305cc28518fef9771340746380c1b647d2d9"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:MeasurementResult:3e6efbbbd857021a2a776ed006ad9c62252e42421a33f124b1f28052079f3722",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 2,
+        "unit": "count",
+        "covered_ms": 4000.0,
+        "eligible_ms": 20000.0,
+        "contributors": [
+          "0",
+          "1"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:MeasurementCalculation:54213553b747b9ec5d2555edf40f1fd6d2f2f9cfcaa74de043c1eb8cace8a2de"
+      }
+    }
+  ]
+}

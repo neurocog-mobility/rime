@@ -1,0 +1,1232 @@
+{
+  "type": "object",
+  "properties": {
+    "@context": {
+      "const": {
+        "prov": "http://www.w3.org/ns/prov#",
+        "rime": "urn:rime:vocab:",
+        "rime:data": {
+          "@type": "@json"
+        }
+      }
+    },
+    "@id": {
+      "type": "string"
+    },
+    "@type": {
+      "const": "rime:Document"
+    },
+    "rime:version": {
+      "const": "1.1"
+    },
+    "rime:createdAt": {
+      "type": "string"
+    },
+    "rime:records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "@id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "@id"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "@graph": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Entity",
+                    "rime:Source"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "file_name": {
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "synthetic": {
+                    "type": "boolean"
+                  },
+                  "media_reference": {
+                    "type": "string"
+                  },
+                  "media_identity": {
+                    "type": "string"
+                  },
+                  "original_author": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source_kind": {
+                    "enum": [
+                      "recording",
+                      "annotation_file",
+                      "model_package"
+                    ]
+                  },
+                  "scope": {
+                    "type": "string"
+                  },
+                  "digest_scope": {
+                    "type": "string"
+                  },
+                  "manifest": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "file_name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        }
+                      },
+                      "required": [
+                        "file_name",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "modality": {
+                    "enum": [
+                      "video",
+                      "signal"
+                    ]
+                  }
+                },
+                "required": [
+                  "file_name",
+                  "sha256",
+                  "source_kind"
+                ],
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "source_kind": {
+                          "const": "model_package"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "manifest",
+                        "scope",
+                        "digest_scope"
+                      ]
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "source_kind": {
+                          "const": "recording"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "modality"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "prov:wasGeneratedBy": {
+                "type": "object",
+                "properties": {
+                  "@id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "@id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Entity",
+                    "rime:AnnotationSet"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "annotations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "lane": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "event_type": {
+                          "enum": [
+                            "point",
+                            "interval"
+                          ]
+                        },
+                        "start_ms": {
+                          "type": "number"
+                        },
+                        "end_ms": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "lane",
+                        "label",
+                        "event_type",
+                        "start_ms",
+                        "end_ms"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "timeline": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "retained",
+                      "proposed"
+                    ]
+                  },
+                  "review_status": {
+                    "enum": [
+                      "unknown",
+                      "incomplete",
+                      "complete",
+                      "unreviewed"
+                    ]
+                  },
+                  "history": {
+                    "const": "unknown"
+                  },
+                  "research_context": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "annotations",
+                  "timeline",
+                  "status",
+                  "review_status"
+                ],
+                "additionalProperties": false
+              },
+              "prov:wasGeneratedBy": {
+                "type": "object",
+                "properties": {
+                  "@id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "@id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Entity",
+                    "rime:ObservationPeriod"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "timeline": {
+                    "type": "string"
+                  },
+                  "intervals": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "prefixItems": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ],
+                      "items": false,
+                      "minItems": 2
+                    }
+                  },
+                  "selection": {
+                    "type": "object",
+                    "properties": {
+                      "rule": {
+                        "const": "selected_annotations"
+                      },
+                      "annotation_set": {
+                        "type": "string"
+                      },
+                      "annotation_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "rule",
+                      "annotation_set",
+                      "annotation_ids"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "timeline",
+                  "intervals"
+                ],
+                "additionalProperties": false
+              },
+              "prov:wasGeneratedBy": {
+                "type": "object",
+                "properties": {
+                  "@id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "@id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Entity",
+                    "rime:CalculationDefinition"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "operation": {
+                    "enum": [
+                      "covered_duration",
+                      "percentage_coverage",
+                      "count"
+                    ]
+                  },
+                  "version": {
+                    "const": "1"
+                  },
+                  "unit": {
+                    "enum": [
+                      "s",
+                      "%",
+                      "count"
+                    ]
+                  },
+                  "lane": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "operation",
+                  "version",
+                  "unit",
+                  "lane",
+                  "label"
+                ],
+                "additionalProperties": false
+              },
+              "prov:wasGeneratedBy": {
+                "type": "object",
+                "properties": {
+                  "@id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "@id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Entity",
+                    "rime:MeasurementResult"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "covered_ms": {
+                    "type": "number"
+                  },
+                  "eligible_ms": {
+                    "type": "number"
+                  },
+                  "contributors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "reason": {
+                    "enum": [
+                      null,
+                      "empty_observation"
+                    ]
+                  }
+                },
+                "required": [
+                  "value",
+                  "unit",
+                  "covered_ms",
+                  "eligible_ms",
+                  "contributors",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              "prov:wasGeneratedBy": {
+                "type": "object",
+                "properties": {
+                  "@id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "@id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Activity",
+                    "rime:AnnotationProduction"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object"
+                  },
+                  "method": {
+                    "enum": [
+                      "manual",
+                      "computational",
+                      "import"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "clinical_definition": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          "known",
+                          "unknown"
+                        ]
+                      },
+                      "description": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "identifier": {
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      },
+                      "protocol_id": {
+                        "type": "string"
+                      },
+                      "protocol_version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status"
+                    ],
+                    "additionalProperties": false,
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": {
+                            "status": {
+                              "const": "known"
+                            }
+                          }
+                        },
+                        "then": {
+                          "required": [
+                            "description"
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "responsibility": {
+                    "const": "unknown"
+                  },
+                  "execution_specification": {
+                    "type": "object"
+                  },
+                  "configuration_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method",
+                  "description",
+                  "clinical_definition"
+                ],
+                "additionalProperties": false
+              },
+              "prov:used": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "@id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "prov:qualifiedUsage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@type": {
+                      "const": "prov:Usage"
+                    },
+                    "prov:entity": {
+                      "type": "object",
+                      "properties": {
+                        "@id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "@id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "prov:hadRole": {
+                      "type": "object",
+                      "properties": {
+                        "@id": {
+                          "enum": [
+                            "rime:recording",
+                            "rime:model_package",
+                            "rime:import_file",
+                            "rime:annotation_input",
+                            "rime:annotations",
+                            "rime:scope_annotations",
+                            "rime:observation",
+                            "rime:definition"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "@id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rime:data": {
+                      "type": "object",
+                      "properties": {
+                        "mapping": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "known",
+                                "unknown"
+                              ]
+                            },
+                            "offset_ms": {
+                              "type": "number"
+                            },
+                            "method": {
+                              "enum": [
+                                "manual_offset",
+                                "import"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "timestamp_conversion": {
+                          "type": "string"
+                        },
+                        "alignment_validation": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "@type",
+                    "prov:entity",
+                    "prov:hadRole"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "prov:wasAssociatedWith": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "@id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data",
+              "prov:used",
+              "prov:qualifiedUsage",
+              "prov:wasAssociatedWith"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Activity",
+                    "rime:AnnotationReview"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object"
+                  },
+                  "method": {
+                    "enum": [
+                      "verification",
+                      "adjudication"
+                    ]
+                  },
+                  "decisions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "action": {
+                          "enum": [
+                            "accept",
+                            "modify",
+                            "reject",
+                            "reject_remaining",
+                            "union",
+                            "intersection",
+                            "mean",
+                            "custom",
+                            "no_event",
+                            "unresolved"
+                          ]
+                        },
+                        "inputs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entity": {
+                                "type": "string"
+                              },
+                              "annotation": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "entity",
+                              "annotation"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "outputs": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "extent": {
+                          "type": "array",
+                          "items": {
+                            "type": "array",
+                            "prefixItems": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ],
+                            "items": false,
+                            "minItems": 2
+                          }
+                        },
+                        "note": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "action",
+                        "inputs",
+                        "outputs",
+                        "extent"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "responsibility": {
+                    "const": "unknown"
+                  }
+                },
+                "required": [
+                  "method",
+                  "decisions"
+                ],
+                "additionalProperties": false
+              },
+              "prov:used": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "@id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "prov:qualifiedUsage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@type": {
+                      "const": "prov:Usage"
+                    },
+                    "prov:entity": {
+                      "type": "object",
+                      "properties": {
+                        "@id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "@id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "prov:hadRole": {
+                      "type": "object",
+                      "properties": {
+                        "@id": {
+                          "enum": [
+                            "rime:recording",
+                            "rime:model_package",
+                            "rime:import_file",
+                            "rime:annotation_input",
+                            "rime:annotations",
+                            "rime:scope_annotations",
+                            "rime:observation",
+                            "rime:definition"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "@id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rime:data": {
+                      "type": "object",
+                      "properties": {
+                        "mapping": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "known",
+                                "unknown"
+                              ]
+                            },
+                            "offset_ms": {
+                              "type": "number"
+                            },
+                            "method": {
+                              "enum": [
+                                "manual_offset",
+                                "import"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "timestamp_conversion": {
+                          "type": "string"
+                        },
+                        "alignment_validation": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "@type",
+                    "prov:entity",
+                    "prov:hadRole"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "prov:wasAssociatedWith": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "@id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data",
+              "prov:used",
+              "prov:qualifiedUsage",
+              "prov:wasAssociatedWith"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Activity",
+                    "rime:MeasurementCalculation"
+                  ]
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "prov:used": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "@id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "prov:qualifiedUsage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@type": {
+                      "const": "prov:Usage"
+                    },
+                    "prov:entity": {
+                      "type": "object",
+                      "properties": {
+                        "@id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "@id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "prov:hadRole": {
+                      "type": "object",
+                      "properties": {
+                        "@id": {
+                          "enum": [
+                            "rime:recording",
+                            "rime:model_package",
+                            "rime:import_file",
+                            "rime:annotation_input",
+                            "rime:annotations",
+                            "rime:scope_annotations",
+                            "rime:observation",
+                            "rime:definition"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "@id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rime:data": {
+                      "type": "object",
+                      "properties": {
+                        "mapping": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "enum": [
+                                "known",
+                                "unknown"
+                              ]
+                            },
+                            "offset_ms": {
+                              "type": "number"
+                            },
+                            "method": {
+                              "enum": [
+                                "manual_offset",
+                                "import"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "timestamp_conversion": {
+                          "type": "string"
+                        },
+                        "alignment_validation": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "@type",
+                    "prov:entity",
+                    "prov:hadRole"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "prov:wasAssociatedWith": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "@id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "@id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data",
+              "prov:used",
+              "prov:qualifiedUsage",
+              "prov:wasAssociatedWith"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "type": "string"
+              },
+              "@type": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "prov:Agent"
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 1,
+                "uniqueItems": true
+              },
+              "rime:data": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "person",
+                      "group",
+                      "model"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "@id",
+              "@type",
+              "rime:data"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 4096
+    }
+  },
+  "required": [
+    "@context",
+    "@id",
+    "@type",
+    "rime:version",
+    "rime:createdAt",
+    "rime:records",
+    "@graph"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RIME closed clinical provenance profile 1.1"
+}

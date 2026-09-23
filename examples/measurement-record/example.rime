@@ -1,0 +1,420 @@
+{
+  "@context": {
+    "prov": "http://www.w3.org/ns/prov#",
+    "rime": "urn:rime:vocab:",
+    "rime:data": {
+      "@type": "@json"
+    }
+  },
+  "@id": "urn:uuid:e10db47b-42d0-48ed-be91-262bea44a371",
+  "@type": "rime:Document",
+  "rime:version": "1.1",
+  "rime:createdAt": "2026-09-22T02:19:58.447856+00:00",
+  "rime:records": [
+    {
+      "@id": "urn:rime:example:import-annotations:percentage_coverage-result"
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:covered_duration-result"
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:count-result"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "urn:rime:example:import-eaf",
+      "@type": [
+        "prov:Entity",
+        "rime:Source"
+      ],
+      "rime:data": {
+        "source_kind": "annotation_file",
+        "file_name": "synthetic-annotations.eaf",
+        "sha256": "5f438fa3972ae628263823c5551b41933e736cee2bfe0a0d5fcba1815d47fb78",
+        "media_reference": "synthetic-video.mp4",
+        "media_identity": "unknown",
+        "original_author": "pympi"
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-import",
+      "@type": [
+        "prov:Activity",
+        "rime:AnnotationProduction"
+      ],
+      "rime:data": {
+        "method": "import",
+        "description": "EAF 3.0 alignable annotation import",
+        "clinical_definition": {
+          "status": "unknown"
+        },
+        "metadata": {
+          "original_annotation_history": "unknown",
+          "mapping": "Tier IDs, values and millisecond boundaries retained unchanged; media alignment not independently verified."
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:example:import-eaf"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-eaf"
+          },
+          "prov:hadRole": {
+            "@id": "rime:import_file"
+          },
+          "rime:data": {
+            "mapping": {
+              "status": "known",
+              "offset_ms": 0,
+              "method": "import"
+            }
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:example:import-annotations",
+      "@type": [
+        "prov:Entity",
+        "rime:AnnotationSet"
+      ],
+      "rime:data": {
+        "annotations": [
+          {
+            "id": "a2",
+            "start_ms": 0,
+            "end_ms": 60000,
+            "event_type": "interval",
+            "lane": "Task",
+            "label": "Trajectory"
+          },
+          {
+            "id": "a3",
+            "start_ms": 10000,
+            "end_ms": 16000,
+            "event_type": "interval",
+            "lane": "FOG",
+            "label": "FOG"
+          },
+          {
+            "id": "a4",
+            "start_ms": 10000,
+            "end_ms": 16000,
+            "event_type": "interval",
+            "lane": "Manifestation",
+            "label": "Akinetic"
+          },
+          {
+            "id": "a5",
+            "start_ms": 20000,
+            "end_ms": 22000,
+            "event_type": "interval",
+            "lane": "Notes",
+            "label": "Synthetic note"
+          }
+        ],
+        "timeline": "EAF milliseconds",
+        "status": "retained",
+        "review_status": "unknown",
+        "research_context": {
+          "participant": "synthetic",
+          "trial": "import-example"
+        }
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:example:import-import"
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:observation",
+      "@type": [
+        "prov:Entity",
+        "rime:ObservationPeriod"
+      ],
+      "rime:data": {
+        "timeline": "EAF milliseconds",
+        "intervals": [
+          [
+            0,
+            60000
+          ]
+        ],
+        "selection": {
+          "rule": "selected_annotations",
+          "annotation_set": "urn:rime:example:import-annotations",
+          "annotation_ids": [
+            "a2"
+          ]
+        }
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:percentage_coverage-definition",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "percentage_coverage",
+        "version": "1",
+        "unit": "%",
+        "lane": "FOG",
+        "label": "FOG"
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:percentage_coverage-calculation",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1"
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:example:import-annotations"
+        },
+        {
+          "@id": "urn:rime:example:import-annotations:observation"
+        },
+        {
+          "@id": "urn:rime:example:import-annotations:percentage_coverage-definition"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations:observation"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations:percentage_coverage-definition"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:percentage_coverage-result",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 10.0,
+        "unit": "%",
+        "covered_ms": 6000.0,
+        "eligible_ms": 60000.0,
+        "contributors": [
+          "a3"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:example:import-annotations:percentage_coverage-calculation"
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:covered_duration-definition",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "covered_duration",
+        "version": "1",
+        "unit": "s",
+        "lane": "FOG",
+        "label": "FOG"
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:covered_duration-calculation",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1"
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:example:import-annotations"
+        },
+        {
+          "@id": "urn:rime:example:import-annotations:observation"
+        },
+        {
+          "@id": "urn:rime:example:import-annotations:covered_duration-definition"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations:observation"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations:covered_duration-definition"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:covered_duration-result",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 6.0,
+        "unit": "s",
+        "covered_ms": 6000.0,
+        "eligible_ms": 60000.0,
+        "contributors": [
+          "a3"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:example:import-annotations:covered_duration-calculation"
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:count-definition",
+      "@type": [
+        "prov:Entity",
+        "rime:CalculationDefinition"
+      ],
+      "rime:data": {
+        "operation": "count",
+        "version": "1",
+        "unit": "count",
+        "lane": "FOG",
+        "label": "FOG"
+      }
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:count-calculation",
+      "@type": [
+        "prov:Activity",
+        "rime:MeasurementCalculation"
+      ],
+      "rime:data": {
+        "metadata": {
+          "implementation": "RIME interval calculator 1"
+        }
+      },
+      "prov:used": [
+        {
+          "@id": "urn:rime:example:import-annotations"
+        },
+        {
+          "@id": "urn:rime:example:import-annotations:observation"
+        },
+        {
+          "@id": "urn:rime:example:import-annotations:count-definition"
+        }
+      ],
+      "prov:qualifiedUsage": [
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations"
+          },
+          "prov:hadRole": {
+            "@id": "rime:annotations"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations:observation"
+          },
+          "prov:hadRole": {
+            "@id": "rime:observation"
+          }
+        },
+        {
+          "@type": "prov:Usage",
+          "prov:entity": {
+            "@id": "urn:rime:example:import-annotations:count-definition"
+          },
+          "prov:hadRole": {
+            "@id": "rime:definition"
+          }
+        }
+      ],
+      "prov:wasAssociatedWith": []
+    },
+    {
+      "@id": "urn:rime:example:import-annotations:count-result",
+      "@type": [
+        "prov:Entity",
+        "rime:MeasurementResult"
+      ],
+      "rime:data": {
+        "value": 1,
+        "unit": "count",
+        "covered_ms": 6000.0,
+        "eligible_ms": 60000.0,
+        "contributors": [
+          "a3"
+        ],
+        "reason": null
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "urn:rime:example:import-annotations:count-calculation"
+      }
+    }
+  ]
+}
