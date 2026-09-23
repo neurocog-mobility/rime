@@ -22,7 +22,7 @@ def test_shortcut_catalog_has_expected_sections_and_bindings() -> None:
         "Annotation Editing",
         "Timeline Selection",
         "Panels And Layout",
-        "Session And Models",
+        "Workspace And Models",
         "Help",
     ]
 

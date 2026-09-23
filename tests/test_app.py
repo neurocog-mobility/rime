@@ -1,68 +1,85 @@
-from __future__ import annotations
+"""Startup routes native records separately from editable workspaces."""
 
+import os
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import pytest
-
 from rime_ui import app as app_module
 
 
-def test_parse_args_requires_open_when_compare_is_used() -> None:
-    with pytest.raises(SystemExit):
-        app_module._parse_args(["--compare", "session2/session.json"])
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--model", "procedure.cmf"],
+        ["--compare", "workspace.json"],
+        ["--preview-screen", "annotations"],
+    ],
+)
+def test_rejects_removed_cli_options(arguments, capsys):
+    with pytest.raises(SystemExit) as error:
+        app_module._parse_args(arguments)
+    assert error.value.code == 2
+    assert "desktop controls" in capsys.readouterr().err
 
 
-def test_main_opens_session_then_comparison_and_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[str, str]] = []
+def test_start_routes_to_native_shell(monkeypatch):
+    calls = []
 
     class FakeApp:
-        def __init__(self, argv):
-            self.argv = argv
-
-        def setApplicationName(self, name: str) -> None:
+        def __init__(self, args):
             pass
 
-        def setApplicationDisplayName(self, name: str) -> None:
+        def setApplicationName(self, name):
             pass
 
-        def setOrganizationName(self, name: str) -> None:
+        def setApplicationDisplayName(self, name):
             pass
 
-        def exec(self) -> int:
+        def setOrganizationName(self, name):
+            pass
+
+        def exec(self):
             return 0
 
     class FakeWindow:
-        def show(self) -> None:
-            calls.append(("show", ""))
-
-        def open_session_path(self, path: str) -> bool:
-            calls.append(("open", path))
-            return True
-
-        def load_comparison_path(self, path: str) -> bool:
-            calls.append(("compare", path))
-            return True
-
-        def load_model_path(self, path: str) -> bool:
-            calls.append(("model", path))
-            return True
+        def show(self):
+            calls.append("show")
 
     monkeypatch.setattr(app_module, "QApplication", FakeApp)
-    monkeypatch.setattr(app_module, "RimeMainWindow", FakeWindow)
+    monkeypatch.setattr(app_module, "RimeWindow", FakeWindow)
+    assert app_module.main([]) == 0
+    assert calls == ["show"]
 
-    code = app_module.main(
-        [
-            "--open",
-            "sample-data/test/session.json",
-            "--compare",
-            "sample-data/test2/session.json",
-            "--model",
-            "demo.rime",
-        ]
-    )
 
-    assert code == 0
-    assert calls == [
-        ("show", ""),
-        ("open", "sample-data/test/session.json"),
-        ("compare", "sample-data/test2/session.json"),
-        ("model", "demo.rime"),
-    ]
+def test_open_routes_to_native_inspector(monkeypatch):
+    from rime_ui.presentation import records
+
+    calls = []
+
+    class App:
+        def __init__(self, args):
+            pass
+
+        def setApplicationName(self, name):
+            pass
+
+        def setApplicationDisplayName(self, name):
+            pass
+
+        def setOrganizationName(self, name):
+            pass
+
+        def exec(self):
+            return 0
+
+    class Inspector:
+        def show(self):
+            calls.append("show")
+
+        def open_path(self, path):
+            calls.append(path)
+
+    monkeypatch.setattr(app_module, "QApplication", App)
+    monkeypatch.setattr(records, "RecordWindow", Inspector)
+    assert app_module.main(["--open", "measurement.rime"]) == 0
+    assert calls == ["show", "measurement.rime"]

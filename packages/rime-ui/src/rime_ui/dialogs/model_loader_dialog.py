@@ -30,8 +30,12 @@ class ModelLoaderDialog(QDialog):
         super().__init__(parent)
         self.package = package
         self.setWindowTitle("Load Model")
-        self.setMinimumSize(640, 480)
         self._setup_ui()
+        from rime_ui.presentation.style import polish_surface
+
+        polish_surface(self)
+        self.setMinimumWidth(self.tabs.tabBar().sizeHint().width() + 24)
+        self.adjustSize()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -58,7 +62,7 @@ class ModelLoaderDialog(QDialog):
             description = QTextEdit(summary_box)
             description.setReadOnly(True)
             description.setPlainText(self.package.config.description)
-            description.setMinimumHeight(150)
+            description.setFixedHeight(4 * description.fontMetrics().lineSpacing() + 12)
             summary_box_layout.addWidget(description)
         layout.addWidget(summary_box)
 
@@ -131,6 +135,11 @@ class ModelLoaderDialog(QDialog):
         placeholder.setStyleSheet(muted_text_stylesheet())
         table = QTableWidget(len(rows), len(headers), widget)
         table.setHorizontalHeaderLabels(headers)
+        table.setMinimumWidth(sum(table.fontMetrics().horizontalAdvance(h) + 44 for h in headers))
+        table.setFixedHeight(
+            table.horizontalHeader().height()
+            + max(1, min(4, len(rows))) * table.verticalHeader().defaultSectionSize() + 4
+        )
         table.horizontalHeader().setStretchLastSection(True)
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -230,7 +239,7 @@ class ModelLoaderDialog(QDialog):
 
         directory = QFileDialog.getExistingDirectory(
             parent,
-            "Select Model Package (.rime folder)",
+            "Select Model Package (.cmf folder)",
         )
         if not directory:
             return None
@@ -255,7 +264,7 @@ class ModelLoaderDialog(QDialog):
 
         directory = QFileDialog.getExistingDirectory(
             parent,
-            "Select Model Package (.rime folder)",
+            "Select Model Package (.cmf folder)",
         )
         if not directory:
             return None

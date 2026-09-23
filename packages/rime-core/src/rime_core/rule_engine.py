@@ -100,6 +100,7 @@ class RuleEngine:
                         event_type="point" if self._schema.is_point_lane(target_lane) else "interval",
                         source="rule:auto_create",
                         ghost=bool(rule.get("ghost", False)),
+                        confidence_type="not_recorded",
                     )
                     violations.append(
                         Violation(
@@ -171,6 +172,7 @@ class RuleEngine:
             event_type="point" if is_point_lane else "interval",
             source="rule:auto_create",
             ghost=ghost,
+            confidence_type="not_recorded",
         )
         return SideEffect(annotation=created)
 

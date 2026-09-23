@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, Signal, QEvent
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -49,6 +49,10 @@ class _SignalEntry:
     channels: list[str]
 
     @property
+    def key(self) -> str:
+        return self.signal.source_id or self.signal.name
+
+    @property
     def name(self) -> str:
         return self.signal.name
 
@@ -81,7 +85,7 @@ class _SignalDisplaySelectorDialog(QDialog):
             for channel in entry.signal.channels:
                 box = QCheckBox(channel, group)
                 box.setChecked(channel in entry.channels)
-                self._boxes[(entry.name, channel)] = box
+                self._boxes[(entry.key, channel)] = box
                 group_layout.addWidget(box)
             container_layout.addWidget(group)
 
@@ -117,8 +121,9 @@ class SignalTrackWidget(QWidget):
     display_mode_changed = Signal(bool)  # True = combined, False = single
     display_selection_changed = Signal(dict)  # signal_name -> channels
 
-    def __init__(self) -> None:
+    def __init__(self, *, native_palette=False) -> None:
         super().__init__()
+        self.native_palette = native_palette
         self._entries: list[_SignalEntry] = []
         self._plots: list = []
         self._overlays: dict[str, list[pg.LinearRegionItem]] = {}
@@ -131,17 +136,21 @@ class SignalTrackWidget(QWidget):
         self._combined_view = True
         self._single_channel_index = 0
         self._duration_s = 0.5
+        self._time_guides = []
+        self._time_guide_positions = []
 
         self._setup_ui()
         self._refresh_controls()
 
     def _setup_ui(self) -> None:
-        layout = QVBoxLayout(self)
+        layout = QHBoxLayout(self) if self.native_palette else QVBoxLayout(self)
         set_zero_margins(layout)
 
         self.controls = QWidget(self)
         self.controls.setObjectName("signalControlsRoot")
         self.controls.setStyleSheet(signal_controls_stylesheet())
+        if self.native_palette:
+            self.controls.setStyleSheet("")
         controls_layout = QHBoxLayout(self.controls)
         set_layout_metrics(controls_layout, spacing=6)
 
@@ -159,11 +168,13 @@ class SignalTrackWidget(QWidget):
         self.prev_button = QPushButton("◀", nav_group)
         self.prev_button.clicked.connect(lambda: self._advance_signal(-1))
         self.prev_button.setToolTip("Show the previous visible channel.")
+        self.prev_button.setAccessibleName("Previous signal channel")
         nav_layout.addWidget(self.prev_button)
 
         self.next_button = QPushButton("▶", nav_group)
         self.next_button.clicked.connect(lambda: self._advance_signal(1))
         self.next_button.setToolTip("Show the next visible channel.")
+        self.next_button.setAccessibleName("Next signal channel")
         nav_layout.addWidget(self.next_button)
         controls_layout.addWidget(nav_group)
 
@@ -177,6 +188,18 @@ class SignalTrackWidget(QWidget):
         controls_layout.addWidget(self.selector_button)
 
         layout.addWidget(self.controls)
+        if self.native_palette:
+            controls_layout.setContentsMargins(8, 0, 8, 0)
+            self.controls.setFixedWidth(108)
+            self.current_label.setMinimumWidth(0)
+            self.current_label.setWordWrap(True)
+            for control in (
+                self.combined_toggle,
+                self.prev_button,
+                self.next_button,
+                self.selector_button,
+            ):
+                control.hide()
 
         if not HAS_PYQTGRAPH:
             label = QLabel("Signal plotting requires pyqtgraph.\npip install pyqtgraph", self)
@@ -187,9 +210,12 @@ class SignalTrackWidget(QWidget):
 
         pg.setConfigOptions(antialias=True, background=COLOR_WINDOW_BG, foreground=COLOR_TEXT)
         self.graphics_widget = pg.GraphicsLayoutWidget()
-        self.graphics_widget.setMinimumHeight(96)
+        if self.native_palette:
+            self.graphics_widget.setBackground(self.palette().color(QPalette.ColorRole.Base))
+        self.graphics_widget.setMinimumHeight(56 if self.native_palette else 96)
         layout.addWidget(self.graphics_widget, 1)
-        self.setMinimumHeight(120)
+        # Keep the plot from overlapping the controls when the splitter shrinks.
+        self.setMinimumHeight(layout.minimumSize().height())
 
     def set_x_range(self, start_s: float, end_s: float) -> None:
         """Set the visible X-axis range (in seconds)."""
@@ -197,6 +223,16 @@ class SignalTrackWidget(QWidget):
         if not self._plots:
             return
         self._plots[0].setXRange(start_s, end_s, padding=0)
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if (
+            event.type() in (QEvent.Type.PaletteChange, QEvent.Type.ApplicationPaletteChange)
+            and getattr(self, "native_palette", False)
+            and hasattr(self, "graphics_widget")
+        ):
+            self.graphics_widget.setBackground(self.palette().color(QPalette.ColorRole.Base))
+            self._refresh_signal_view()
 
     def add_overlay(
         self, ann_id: str, start_s: float, end_s: float, color: str = COLOR_ACCENT_MUTED
@@ -270,11 +306,12 @@ class SignalTrackWidget(QWidget):
     def set_display_config(self, entries: list[tuple["Signal", list[str]]]) -> None:
         """Replace the displayed signals using the provided signal/channel pairs."""
         self._entries = [
-            _SignalEntry(signal=signal, channels=list(channels))
-            for signal, channels in entries
+            _SignalEntry(signal=signal, channels=list(channels)) for signal, channels in entries
         ]
         visible_channels = self._visible_channels()
-        self._single_channel_index = min(self._single_channel_index, max(0, len(visible_channels) - 1))
+        self._single_channel_index = min(
+            self._single_channel_index, max(0, len(visible_channels) - 1)
+        )
         self._duration_s = self._compute_duration_s()
         self._refresh_signal_view()
 
@@ -335,10 +372,21 @@ class SignalTrackWidget(QWidget):
             if channel not in entry.signal.channels:
                 continue
             color = SIGNAL_PLOT_COLORS[line_index % len(SIGNAL_PLOT_COLORS)]
+            if (
+                self.native_palette
+                and self.palette().color(QPalette.ColorRole.Base).lightness() > 128
+            ):
+                color = ("#17678a", "#36783d", "#9a5610", "#a53567", "#77469b", "#20746b")[
+                    line_index % 6
+                ]
             plot.plot(
                 time_s,
                 entry.signal.get_channel(channel),
-                pen=pg.mkPen(color, width=1.2),
+                # Thin, un-antialiased traces use Qt's fast line drawing path.
+                # Wider smoothed paths block the GUI during playhead repaints,
+                # starving video presentation when several sensors are visible.
+                pen=pg.mkPen(color, width=1),
+                antialias=False,
             )
 
         playhead = pg.InfiniteLine(
@@ -353,10 +401,13 @@ class SignalTrackWidget(QWidget):
         for ann_id, data in self._overlay_data.copy().items():
             self.add_overlay(ann_id, data["start"], data["end"], data["color"])
         self.update_snap_lines(self._last_snap_times_ms)
+        self.set_time_guides(self._time_guide_positions)
         if self._last_x_range is not None:
             self.set_x_range(*self._last_x_range)
 
     def _configure_plot(self, plot) -> None:
+        if self.native_palette:
+            plot.layout.setContentsMargins(0, 0, 0, 0)
         plot.setMenuEnabled(False)
         plot.hideAxis("left")
         plot.hideAxis("bottom")
@@ -367,10 +418,33 @@ class SignalTrackWidget(QWidget):
         view_box = plot.getViewBox()
         view_box.setMouseEnabled(x=False, y=False)
         max_range = max(self._duration_s, 0.5)
-        view_box.setLimits(xMin=0.0, xMax=max_range, minXRange=min(0.5, max_range), maxXRange=max_range)
+        view_box.setLimits(
+            xMin=0.0, xMax=max_range, minXRange=min(0.5, max_range), maxXRange=max_range
+        )
         view_box.setDefaultPadding(0.0)
         plot.getAxis("left").setStyle(showValues=False)
         plot.getAxis("bottom").setStyle(showValues=False)
+
+    def set_time_guides(self, positions_ms):
+        """Share the annotation ruler's major ticks without adding a second ruler."""
+        self._time_guide_positions = list(positions_ms)
+        for plot, line in self._time_guides:
+            plot.removeItem(line)
+        self._time_guides.clear()
+        if not self.native_palette:
+            return
+        color = self.palette().color(QPalette.ColorRole.Mid)
+        color.setAlpha(65)
+        for plot in self._plots:
+            for position in positions_ms:
+                line = pg.InfiniteLine(
+                    pos=position / 1000, angle=90,
+                    pen=pg.mkPen(color, width=1, style=Qt.PenStyle.DotLine),
+                    movable=False,
+                )
+                line.setZValue(-5)
+                plot.addItem(line, ignoreBounds=True)
+                self._time_guides.append((plot, line))
 
     def _clear_plot_items(self) -> None:
         if HAS_PYQTGRAPH:
@@ -379,6 +453,7 @@ class SignalTrackWidget(QWidget):
         self._playhead_lines.clear()
         self._snap_lines.clear()
         self._overlays.clear()
+        self._time_guides.clear()
 
     def _visible_channels(self) -> list[tuple[_SignalEntry, str]]:
         entries = [entry for entry in self._entries if entry.channels]
@@ -400,8 +475,10 @@ class SignalTrackWidget(QWidget):
         has_entries = bool(self._entries)
         has_visible_entries = bool(entries)
         visible_channels = self._visible_channels()
-        visible_channel_count = len(visible_channels) if self._combined_view else sum(
-            len(entry.channels) for entry in entries
+        visible_channel_count = (
+            len(visible_channels)
+            if self._combined_view
+            else sum(len(entry.channels) for entry in entries)
         )
         all_visible_channels = [
             (entry, channel)
@@ -423,8 +500,12 @@ class SignalTrackWidget(QWidget):
         else:
             self.combined_toggle.setToolTip("Load signals to enable combined view.")
         self.selector_button.setEnabled(has_entries)
-        self.prev_button.setEnabled(has_visible_entries and not self._combined_view and len(all_visible_channels) > 1)
-        self.next_button.setEnabled(has_visible_entries and not self._combined_view and len(all_visible_channels) > 1)
+        self.prev_button.setEnabled(
+            has_visible_entries and not self._combined_view and len(all_visible_channels) > 1
+        )
+        self.next_button.setEnabled(
+            has_visible_entries and not self._combined_view and len(all_visible_channels) > 1
+        )
 
         if not has_entries:
             self.current_label.setText("No signals")
@@ -440,7 +521,7 @@ class SignalTrackWidget(QWidget):
             return
         self._single_channel_index = min(self._single_channel_index, len(all_visible_channels) - 1)
         current_entry, current_channel = all_visible_channels[self._single_channel_index]
-        self.current_label.setText(current_entry.name)
+        self.current_label.setText(f"{current_entry.name}: {current_channel}")
         self.current_label.setToolTip(f"{current_entry.name}: {current_channel}")
 
     def _advance_signal(self, step: int) -> None:
@@ -478,7 +559,7 @@ class SignalTrackWidget(QWidget):
             entry.channels = [
                 channel
                 for channel in entry.signal.channels
-                if channel in selection.get(entry.name, [])
+                if channel in selection.get(entry.key, [])
             ]
         visible_entries = [entry for entry in self._entries if entry.channels]
         if not visible_entries:
@@ -491,13 +572,12 @@ class SignalTrackWidget(QWidget):
                 for channel in entry.channels
                 if channel in entry.signal.channels
             )
-            self._single_channel_index = min(self._single_channel_index, max(0, visible_channel_count - 1))
+            self._single_channel_index = min(
+                self._single_channel_index, max(0, visible_channel_count - 1)
+            )
         self._refresh_signal_view()
         self.display_selection_changed.emit(
-            {
-                entry.name: list(entry.channels)
-                for entry in self._entries
-            }
+            {entry.key: list(entry.channels) for entry in self._entries}
         )
 
     def _compute_duration_s(self) -> float:

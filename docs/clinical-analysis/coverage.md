@@ -1,34 +1,21 @@
-# Coverage
+# Duration, percentage and count
 
-Coverage quantifies how much of a reference period (e.g. a walking task) is occupied by a target event (e.g. a FOG episode). It is the primary derived measure for many clinical outcome calculations in RIME.
+The Measurements section computes selected protocol measures over the configured
+observation period. Its **Configure…** button selects measures and time scope.
 
-## What coverage means
+- **Covered duration:** the union of matching intervals within eligible time, in seconds. Overlap is counted once.
+- **Percentage coverage:** covered duration divided by eligible duration, multiplied by 100.
+- **Count:** one per retained matching annotation contributing within eligible time. Separate overlapping annotations remain separate contributors.
 
-```
-coverage = total duration of [target annotations] / total duration of [reference annotations]
-```
+For GP-FOG these are Total time frozen, Percentage time frozen and FOG episode
+count, with Tasks defining the default observation period. A count represents
+clinical episodes only if the study's annotation practice assigns one annotation
+per episode.
 
-For example: *FOG duration as a fraction of total walking time.*
+An empty observation period gives an undefined result. No matching events in a
+nonempty period gives zero; that does not establish complete review or clinical
+absence. Pending suggestions and unresolved review inputs do not contribute.
+Point annotations support count, not duration or percentage.
 
-## Configuring a coverage spec
-
-Coverage is defined by two lane/label selectors:
-
-- **Numerator** — the event you are measuring (e.g. lane: `fog`, label: `FOG`)
-- **Denominator** — the reference period (e.g. lane: `task`, label: `Walking`)
-
-
-## Output
-
-| Field | Description |
-|---|---|
-| Ratio | Numerator ÷ Denominator (0–1) |
-| Percent | Ratio × 100 |
-| Numerator duration (ms) | Total merged duration of target events |
-| Denominator duration (ms) | Total merged duration of reference periods |
-| Numerator episodes | Count of discrete target events |
-| Denominator episodes | Count of discrete reference periods |
-
-## Multiple coverage specs
-
-A session can have multiple named coverage specs (e.g. FOG/Walking, TiP/Walking, FOG/Total). These are defined in the [schema](../study-setup/protocol-schema.md) and displayed together in the Clinical panel.
+See [measurements](clinical-metrics.md) for capture and inspection and the
+[native contract](../measurement-records/rime-specification.md) for exact semantics.

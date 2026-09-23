@@ -9,7 +9,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from rime_core.annotations import Annotation
-from rime_ui.widgets.overview_strip import OverviewStrip
+from rime_ui.presentation.overview import OverviewStrip
 from rime_ui.widgets.signals import SignalTrackWidget
 
 
@@ -80,3 +80,48 @@ def test_overview_strip_annotation_alpha_uses_equal_per_annotation_weight() -> N
 
     assert alpha_one > alpha_two > alpha_many
     assert alpha_many >= 20
+
+
+def test_embedded_zoom_handles_pan_seek_and_fit():
+    app = _app()
+    widget = OverviewStrip(embedded=True)
+    widget.resize(800, 20)
+    widget.set_duration(10000)
+    widget.set_view_range(0, 10000)
+    widget.show()
+    app.processEvents()
+    positions = []
+    widget.position_selected.connect(positions.append)
+
+    def point(time):
+        return QPoint(round(widget._time_to_x(time, widget._strip_rect())), 10)
+
+    def drag(start, end):
+        QTest.mousePress(widget, Qt.MouseButton.LeftButton, pos=point(start))
+        QTest.mouseMove(widget, point(end))
+        QTest.mouseRelease(widget, Qt.MouseButton.LeftButton, pos=point(end))
+
+    # At zero the zoom edge, not the overlapping playhead, owns the handle.
+    drag(0, 2000)
+    start, end = widget.get_view_range()
+    assert abs(start - 2000) < 20 and end == 10000
+    assert not positions
+    drag(10000, 6000)
+    start, end = widget.get_view_range()
+    assert abs(start - 2000) < 20 and abs(end - 6000) < 20
+    span = end - start
+    drag(4000, 5000)
+    start, end = widget.get_view_range()
+    assert abs(start - 3000) < 30 and abs((end - start) - span) < 1
+    # Resizing past either recording boundary keeps the other edge fixed.
+    drag(start, -2000)
+    assert widget.get_view_range()[0] == 0
+    assert abs(widget.get_view_range()[1] - end) < 1
+    QTest.mouseClick(widget, Qt.MouseButton.LeftButton, pos=point(9000))
+    assert abs(positions[-1] - 9000) < 20
+    assert widget.get_view_range()[0] <= positions[-1] <= widget.get_view_range()[1]
+    QTest.mouseDClick(widget, Qt.MouseButton.LeftButton, pos=point(5000))
+    assert widget.get_view_range() == (0, 10000)
+    widget.close()
+    widget.deleteLater()
+    app.processEvents()

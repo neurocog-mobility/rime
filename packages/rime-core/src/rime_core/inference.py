@@ -102,7 +102,9 @@ class InferenceRunner:
         self._validate_bindings()
 
         signal_durations = [
-            binding.signal.duration_ms for binding in self.input_bindings if binding.signal is not None
+            binding.signal.duration_ms
+            for binding in self.input_bindings
+            if binding.signal is not None
         ]
         duration_ms = (
             (end_ms - start_ms)
@@ -228,10 +230,14 @@ class InferenceRunner:
                     raw_predictions = raw_predictions[
                         (raw_predictions >= 0.0) & (raw_predictions <= duration_ms)
                     ]
-                annotations = self._point_output_to_annotations(raw_predictions, mapping, duration_ms)
+                annotations = self._point_output_to_annotations(
+                    raw_predictions, mapping, duration_ms
+                )
             elif output_type == "interval":
                 raw_predictions = self._coerce_interval_array(raw)
-                annotations = self._interval_output_to_annotations(raw_predictions, mapping, duration_ms)
+                annotations = self._interval_output_to_annotations(
+                    raw_predictions, mapping, duration_ms
+                )
             elif output_type == "probability":
                 raise InferenceError(
                     f"Whole-signal inference does not support probability output '{mapping.output_name}'"
@@ -258,9 +264,7 @@ class InferenceRunner:
         duration_ms: float,
     ) -> list[Annotation]:
         if duration_ms > 0:
-            timestamps_ms = timestamps_ms[
-                (timestamps_ms >= 0.0) & (timestamps_ms <= duration_ms)
-            ]
+            timestamps_ms = timestamps_ms[(timestamps_ms >= 0.0) & (timestamps_ms <= duration_ms)]
         return [
             Annotation(
                 id=generate_id(),
@@ -272,6 +276,7 @@ class InferenceRunner:
                 source=f"model:{self.package.name}",
                 ghost=True,
                 confidence=1.0,
+                confidence_type="not_recorded",
                 origin_confidence=1.0,
                 origin_start_ms=float(timestamp_ms),
                 origin_end_ms=float(timestamp_ms),
@@ -305,6 +310,7 @@ class InferenceRunner:
                     source=f"model:{self.package.name}",
                     ghost=True,
                     confidence=1.0,
+                    confidence_type="not_recorded",
                     origin_confidence=1.0,
                     origin_start_ms=float(start_ms),
                     origin_end_ms=float(end_ms),
@@ -325,9 +331,7 @@ class InferenceRunner:
 
         duplicates = sorted({name for name in bound_inputs if bound_inputs.count(name) > 1})
         if duplicates:
-            raise InferenceError(
-                "Duplicate input bindings provided for: " + ", ".join(duplicates)
-            )
+            raise InferenceError("Duplicate input bindings provided for: " + ", ".join(duplicates))
 
         for binding in self.input_bindings:
             if binding.input_name not in self._input_configs:
@@ -530,7 +534,9 @@ class InferenceRunner:
         expected_shape = input_config.get("shape")
         if not expected_shape:
             return raw_window[np.newaxis, :, :]
-        if not isinstance(expected_shape, list) or not all(isinstance(item, int) for item in expected_shape):
+        if not isinstance(expected_shape, list) or not all(
+            isinstance(item, int) for item in expected_shape
+        ):
             raise InferenceError("Model input shape must be a list of integers")
         if int(np.prod(expected_shape)) != int(raw_window.size):
             raise InferenceError(
@@ -595,9 +601,19 @@ class InferenceRunner:
             return []
 
         annotations: list[Annotation] = []
-        for span_start_idx, span_end_idx in self._merge_spans(times_ms, spans):
+        window_size_ms = float(self.package.config.window_size_ms or 0)
+        for span_group in self._merge_spans(times_ms, spans):
+            span_start_idx = span_group[0][0]
+            span_end_idx = span_group[-1][1]
+            start_ms = float(times_ms[span_start_idx])
+            end_ms = float(times_ms[span_end_idx - 1] + window_size_ms)
+            if end_ms - start_ms < self.package.config.min_duration_ms:
+                continue
+            positive_indices = np.concatenate(
+                [np.arange(start, end, dtype=int) for start, end in span_group]
+            )
             confidence = (
-                float(np.mean(probs[span_start_idx:span_end_idx]))
+                float(np.mean(probs[positive_indices]))
                 if self._output_is_probability(mapping.output_name)
                 else 1.0
             )
@@ -606,32 +622,43 @@ class InferenceRunner:
                     id=generate_id(),
                     lane=mapping.lane,
                     label=mapping.label,
-                    start_ms=float(times_ms[span_start_idx]),
-                    end_ms=float(times_ms[span_end_idx - 1] + (self.package.config.window_size_ms or 0)),
+                    start_ms=start_ms,
+                    end_ms=end_ms,
                     source=f"model:{self.package.name}",
                     ghost=True,
                     confidence=confidence,
-                    origin_confidence=confidence,
-                    origin_start_ms=float(times_ms[span_start_idx]),
-                    origin_end_ms=float(
-                        times_ms[span_end_idx - 1] + (self.package.config.window_size_ms or 0)
+                    confidence_type=(
+                        "model_probability"
+                        if self._output_is_probability(mapping.output_name)
+                        else "not_recorded"
                     ),
+                    origin_confidence=confidence,
+                    origin_start_ms=start_ms,
+                    origin_end_ms=end_ms,
                 )
             )
         return annotations
 
-    def _merge_spans(self, times_ms: np.ndarray, spans: list[list[int]]) -> list[tuple[int, int]]:
-        merged: list[tuple[int, int]] = []
-        current_start, current_end = spans[0]
+    def _merge_spans(
+        self,
+        times_ms: np.ndarray,
+        spans: list[list[int]],
+    ) -> list[list[tuple[int, int]]]:
+        """Union overlapping decision windows and bridge only the declared gap."""
+        window_size_ms = float(self.package.config.window_size_ms or 0)
+        merge_gap_ms = float(self.package.config.merge_gap_ms)
+        merged: list[list[tuple[int, int]]] = [[tuple(spans[0])]]
+        _, current_end = spans[0]
+        current_end_ms = float(times_ms[current_end - 1] + window_size_ms)
         for next_start, next_end in spans[1:]:
-            stride_ms = float(self.package.config.stride_ms or 0)
-            gap_ms = float(times_ms[next_start] - times_ms[current_end - 1])
-            if gap_ms < stride_ms:
-                current_end = next_end
+            gap_ms = float(times_ms[next_start] - current_end_ms)
+            next_end_ms = float(times_ms[next_end - 1] + window_size_ms)
+            if gap_ms <= merge_gap_ms:
+                merged[-1].append((next_start, next_end))
+                current_end_ms = max(current_end_ms, next_end_ms)
                 continue
-            merged.append((current_start, current_end))
-            current_start, current_end = next_start, next_end
-        merged.append((current_start, current_end))
+            merged.append([(next_start, next_end)])
+            current_end_ms = next_end_ms
         return merged
 
     def _offset_result_to_session_time(self, result: InferenceResult, start_ms: float) -> None:

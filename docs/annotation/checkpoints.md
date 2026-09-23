@@ -1,31 +1,10 @@
-# Checkpoints
+# Preserving editing states
 
-Checkpoints let you save named snapshots of annotation progress within a session. This is useful for multi-day annotation, version control of annotation state, or marking a session as ready for review.
+The current desktop does not provide named checkpoint or restore-checkpoint dialogs.
+Use **File → Save workspace** (or **Save review**) to persist current work. To keep
+a prior editing state, save and then copy its JSON to a separate filename before
+continuing. Source files remain external and must stay available.
 
-## Creating a checkpoint
-
-**Session → Save Checkpoint** (or `Ctrl+Shift+S`)
-
-
-- Enter a name (e.g. `first-pass`, `after-review`, `final`)
-- Optional notes
-- The checkpoint is saved inside the session folder
-
-## Restoring a checkpoint
-
-**Session → Manage Checkpoints** shows the list of saved checkpoints.
-
-- Click any checkpoint to preview its annotation state
-- Click **Restore** to revert the session to that snapshot
-
-## When to use checkpoints
-
-| Scenario | Checkpoint name suggestion |
-|---|---|
-| End of a session annotation pass | `pass-1` |
-| Before making a large correction | `pre-correction` |
-| Annotation complete, ready for IRR | `ready-for-irr` |
-| After IRR resolution | `final` |
-
-!!! tip
-    Creating a checkpoint before loading a review layer is good practice — it preserves your independent annotation state.
+For fixed scientific results, use **Save records…** and retain the exported `.rime`
+file. It captures the selected results and their retained derivations; it is not
+an editable workspace backup. See [persistence](../study-setup/workspace-persistence.md).

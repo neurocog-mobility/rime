@@ -51,7 +51,7 @@ def _make_signal(
 
 def _make_package(runner: SequenceRunner) -> CMFPackage:
     return CMFPackage(
-        path=Path("dummy-model.rime"),
+        path=Path("dummy-model.cmf"),
         config=CMFConfig(
             cmf_version="1.0",
             name="MultiModel",
@@ -104,7 +104,7 @@ def _make_package(runner: SequenceRunner) -> CMFPackage:
 
 def _make_point_package(runner: SequenceRunner) -> CMFPackage:
     return CMFPackage(
-        path=Path("point-model.rime"),
+        path=Path("point-model.cmf"),
         config=CMFConfig(
             cmf_version="1.0",
             name="PointModel",
@@ -205,28 +205,36 @@ def test_run_produces_annotations_for_multiple_mapped_outputs() -> None:
     assert len(result.outputs) == 3
     assert runner.calls[0]["imu_window"].shape == (1, 10, 2)
 
-    fog_output = next(output for output in result.outputs if output.output_name == "fog_probability")
+    fog_output = next(
+        output for output in result.outputs if output.output_name == "fog_probability"
+    )
     assert len(fog_output.annotations) == 1
     assert fog_output.annotations[0].lane == "FOG"
     assert fog_output.annotations[0].start_ms == 1000.0
     assert fog_output.annotations[0].end_ms == 3000.0
     assert fog_output.annotations[0].confidence == pytest.approx((0.7 + 0.8 + 0.9) / 3.0)
+    assert fog_output.annotations[0].confidence_type == "model_probability"
     assert fog_output.annotations[0].origin_confidence == pytest.approx((0.7 + 0.8 + 0.9) / 3.0)
     assert fog_output.annotations[0].origin_start_ms == 1000.0
     assert fog_output.annotations[0].origin_end_ms == 3000.0
 
-    task_output = next(output for output in result.outputs if output.output_name == "task_probability")
+    task_output = next(
+        output for output in result.outputs if output.output_name == "task_probability"
+    )
     assert len(task_output.annotations) == 1
     assert task_output.annotations[0].lane == "Tasks"
     assert task_output.annotations[0].label == "Walk"
     assert task_output.annotations[0].start_ms == 0.0
     assert task_output.annotations[0].end_ms == 2000.0
 
-    phenotype_output = next(output for output in result.outputs if output.output_name == "phenotype")
+    phenotype_output = next(
+        output for output in result.outputs if output.output_name == "phenotype"
+    )
     assert len(phenotype_output.annotations) == 1
     assert phenotype_output.annotations[0].lane == "Manifestations"
     assert phenotype_output.annotations[0].label == "Akinetic"
     assert phenotype_output.annotations[0].confidence == 1.0
+    assert phenotype_output.annotations[0].confidence_type == "not_recorded"
 
 
 def test_short_signal_produces_empty_outputs() -> None:
@@ -242,6 +250,66 @@ def test_short_signal_produces_empty_outputs() -> None:
 
     assert result.time_ms.size == 0
     assert result.outputs[0].raw_predictions.size == 0
+    assert result.annotations == []
+
+
+def test_declared_merge_gap_bridges_reconstructed_probability_intervals() -> None:
+    values = [0.1] * 9
+    values[0] = 0.8
+    values[3] = 0.6
+    runner = SequenceRunner(
+        [{"fog_probability": np.array([value], dtype=np.float32)} for value in values]
+    )
+    package = _make_package(runner)
+    package.config.merge_gap_ms = 500
+
+    result = InferenceRunner(
+        package,
+        [InputBinding(input_name="imu_window", signal=_make_signal())],
+        [OutputMapping(output_name="fog_probability", lane="FOG", label="FOG")],
+    ).run()
+
+    assert len(result.annotations) == 1
+    annotation = result.annotations[0]
+    assert annotation.start_ms == 0.0
+    assert annotation.end_ms == 2500.0
+    assert annotation.confidence == pytest.approx(0.7)
+
+
+def test_overlapping_probability_windows_are_unioned_with_zero_merge_gap() -> None:
+    values = [0.1] * 9
+    values[0] = 0.8
+    values[2] = 0.6
+    runner = SequenceRunner(
+        [{"fog_probability": np.array([value], dtype=np.float32)} for value in values]
+    )
+    package = _make_package(runner)
+
+    result = InferenceRunner(
+        package,
+        [InputBinding(input_name="imu_window", signal=_make_signal())],
+        [OutputMapping(output_name="fog_probability", lane="FOG", label="FOG")],
+    ).run()
+
+    assert len(result.annotations) == 1
+    assert result.annotations[0].start_ms == 0.0
+    assert result.annotations[0].end_ms == 2000.0
+
+
+def test_declared_minimum_duration_filters_after_interval_reconstruction() -> None:
+    values = [0.8] + [0.1] * 8
+    runner = SequenceRunner(
+        [{"fog_probability": np.array([value], dtype=np.float32)} for value in values]
+    )
+    package = _make_package(runner)
+    package.config.min_duration_ms = 1001
+
+    result = InferenceRunner(
+        package,
+        [InputBinding(input_name="imu_window", signal=_make_signal())],
+        [OutputMapping(output_name="fog_probability", lane="FOG", label="FOG")],
+    ).run()
+
     assert result.annotations == []
 
 
@@ -261,7 +329,7 @@ def test_unknown_output_mapping_raises_error() -> None:
 def test_missing_input_binding_raises_error() -> None:
     runner = SequenceRunner([{"fog_probability": np.array([0.1], dtype=np.float32)}] * 9)
     package = CMFPackage(
-        path=Path("dummy-model.rime"),
+        path=Path("dummy-model.cmf"),
         config=CMFConfig(
             cmf_version="1.0",
             name="TwoInputs",
@@ -318,7 +386,7 @@ def test_missing_input_binding_raises_error() -> None:
 def test_video_input_requires_video_path() -> None:
     runner = SequenceRunner([{"moving_bouts": np.zeros((0, 2), dtype=np.float32)}])
     package = CMFPackage(
-        path=Path("dummy-model.rime"),
+        path=Path("dummy-model.cmf"),
         config=CMFConfig(
             cmf_version="1.0",
             name="VideoModel",
@@ -379,13 +447,10 @@ def test_empty_output_mappings_raise_error() -> None:
 
 def test_multiple_inputs_must_share_time_axis() -> None:
     runner = SequenceRunner(
-        [
-            {"fog_probability": np.array([0.1], dtype=np.float32)}
-            for _ in range(9)
-        ]
+        [{"fog_probability": np.array([0.1], dtype=np.float32)} for _ in range(9)]
     )
     package = CMFPackage(
-        path=Path("dummy-model.rime"),
+        path=Path("dummy-model.cmf"),
         config=CMFConfig(
             cmf_version="1.0",
             name="MultiInput",
@@ -464,12 +529,24 @@ def test_point_output_runs_once_on_full_signal() -> None:
     assert len(runner.calls) == 1
     assert runner.calls[0]["trunk_accel"].shape == (50, 2)
     assert np.allclose(result.outputs[0].raw_predictions, np.array([300.0, 1200.0]))
-    assert [annotation.event_type for annotation in result.outputs[0].annotations] == ["point", "point"]
+    assert [annotation.event_type for annotation in result.outputs[0].annotations] == [
+        "point",
+        "point",
+    ]
     assert [annotation.start_ms for annotation in result.outputs[0].annotations] == [300.0, 1200.0]
     assert [annotation.end_ms for annotation in result.outputs[0].annotations] == [300.0, 1200.0]
-    assert [annotation.origin_start_ms for annotation in result.outputs[0].annotations] == [300.0, 1200.0]
-    assert [annotation.origin_end_ms for annotation in result.outputs[0].annotations] == [300.0, 1200.0]
-    assert [annotation.origin_confidence for annotation in result.outputs[0].annotations] == [1.0, 1.0]
+    assert [annotation.origin_start_ms for annotation in result.outputs[0].annotations] == [
+        300.0,
+        1200.0,
+    ]
+    assert [annotation.origin_end_ms for annotation in result.outputs[0].annotations] == [
+        300.0,
+        1200.0,
+    ]
+    assert [annotation.origin_confidence for annotation in result.outputs[0].annotations] == [
+        1.0,
+        1.0,
+    ]
 
 
 def test_channel_map_resolves_model_channels() -> None:

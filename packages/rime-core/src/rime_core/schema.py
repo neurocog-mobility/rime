@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+
+from rime_core.outcomes import OutcomeDefinition
 
 
 DEFAULT_SCHEMA_PATH = Path(__file__).parent / "config" / "gpfog_schema.json"
@@ -37,6 +40,7 @@ class ProtocolSchema:
     lanes: list[LaneSchema]
     groups: list[dict[str, Any]]
     rules: list[dict[str, Any]]
+    measurements: list[OutcomeDefinition] = field(default_factory=list)
 
     @classmethod
     def load(cls, path: Path | str) -> ProtocolSchema:
@@ -48,6 +52,15 @@ class ProtocolSchema:
             raise SchemaValidationError(f"Schema file not found: {schema_path}") from exc
         except json.JSONDecodeError as exc:
             raise SchemaValidationError(f"Invalid schema JSON in {schema_path}: {exc}") from exc
+
+        return cls.from_dict(raw, source=str(schema_path))
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any], *, source: str = "retained protocol") -> ProtocolSchema:
+        """Validate an embedded protocol using the same rules as file import."""
+        schema_path = source
+        if not isinstance(raw, dict):
+            raise SchemaValidationError(f"Schema must be an object in {source}")
 
         name = raw.get("name")
         if not isinstance(name, str) or not name.strip():
@@ -113,12 +126,31 @@ class ProtocolSchema:
         if not isinstance(version, str) or not version.strip():
             raise SchemaValidationError(f"Missing or invalid 'version' in {schema_path}")
 
+        try:
+            measurement_data = raw.get("measurements", [])
+            if not isinstance(measurement_data, list):
+                raise ValueError("Measurements must be an array.")
+            measurements = [OutcomeDefinition.from_dict(item) for item in measurement_data]
+            if len({item.id for item in measurements}) != len(measurements):
+                raise ValueError("Duplicate measurement IDs.")
+            lane_types = {lane.name: lane.lane_type for lane in lanes}
+            for item in measurements:
+                if item.events.lane not in lane_types:
+                    raise ValueError(f"Unknown measurement event lane: {item.events.lane}")
+                if item.calculation != "count" and lane_types[item.events.lane] != "interval":
+                    raise ValueError("Duration and coverage require interval annotations.")
+                if item.scope is not None and lane_types.get(item.scope.lane) != "interval":
+                    raise ValueError("Measurement scope must select an interval lane.")
+        except (ValueError, KeyError, TypeError) as exc:
+            raise SchemaValidationError(f"Invalid measurements in {source}: {exc}") from exc
+
         return cls(
             version=version,
             name=name,
             lanes=lanes,
             groups=groups,
             rules=rules,
+            measurements=measurements,
         )
 
     @classmethod
@@ -144,6 +176,7 @@ class ProtocolSchema:
             ],
             "groups": list(self.groups),
             "rules": list(self.rules),
+            "measurements": [item.to_dict() for item in self.measurements],
         }
 
     def save(self, path: Path | str) -> Path:

@@ -56,9 +56,9 @@ def test_signal_panel_cycles_single_signal_view() -> None:
     )
 
     widget.set_combined_view(False)
-    assert widget.current_label.text() == "Trunk"
+    assert widget.current_label.text() == "Trunk: acc_x"
     widget._advance_signal(1)
-    assert widget.current_label.text() == "Leg"
+    assert widget.current_label.text() == "Leg: gyro_x"
 
 
 def test_signal_panel_applies_channel_selection_filter() -> None:

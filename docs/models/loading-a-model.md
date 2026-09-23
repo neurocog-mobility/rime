@@ -1,44 +1,13 @@
-# Loading a Model
+# Run a model
 
-## Requirements
+1. In an annotation workspace, choose **Run model…** and select a CMF package.
+2. Inspect its summary, bind inputs/channels, map outputs to lanes/labels, and choose the run interval and declared parameters.
+3. Run it, then accept, modify or reject the pending suggestions.
+4. Save the workspace to retain the run and decisions. Only retained annotations contribute to measurements.
 
-- A `.rime` model package (see [What is CMF?](what-is-cmf.md))
-- The session must have the signal channels the model requires
+Start with the synthetic model in the [examples](../examples.md). Model applicability
+and source/channel meanings must be established for your study; example packages
+are not clinical validation.
 
-## Load a model
-
-**Models → Load Model** (or the model loader button in the toolbar)
-
-
-1. Browse to the `.rime` package folder or zip file
-2. RIME reads the model's `config.json` and validates that the required signals are present in the session
-3. The model appears in the **Model Runner** panel
-
-## Run inference
-
-In the **Model Runner** panel:
-
-- Click **Run** to run the model on the current session
-- Inference progress is shown in the panel
-- Output is overlaid on the timeline in the configured lane
-
-
-## Adjust model parameters
-
-Click **Settings** in the Model Runner panel to adjust:
-
-- Detection threshold
-- Window size / stride
-- Any model-specific parameters declared in `config.json`
-
-
-## Included models
-
-The RIME repository includes several example `.rime` packages in `models/`:
-
-| Package | Description |
-|---|---|
-| `freeze-index.rime` | Freeze Index from accelerometer signal |
-| `step-detector.rime` | Step detection from foot accelerometer |
-| `walking-classifier.rime` | Walking vs. non-walking classifier |
-| `movement-video.rime` | Movement detection from video |
+See [CMF in practice](cmf-example.md) and the [CMF specification](cmf-specification.md)
+for package development.

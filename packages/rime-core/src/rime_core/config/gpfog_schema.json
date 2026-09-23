@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "name": "GP-FOG",
   "lanes": [
     {
@@ -119,6 +119,53 @@
       "target_lane": "Core",
       "target_label": "Core",
       "message": "Akinetic FOG must coincide with a Core period"
+    }
+  ],
+  "measurements": [
+    {
+      "id": "fog_coverage",
+      "name": "Percentage time frozen",
+      "version": "1",
+      "calculation": "percentage_coverage",
+      "calculation_version": "1",
+      "events": {
+        "lane": "FOG",
+        "label": "FOG"
+      },
+      "scope": {
+        "lane": "Tasks",
+        "label": null
+      }
+    },
+    {
+      "id": "fog_duration",
+      "name": "Total time frozen",
+      "version": "1",
+      "calculation": "covered_duration",
+      "calculation_version": "1",
+      "events": {
+        "lane": "FOG",
+        "label": "FOG"
+      },
+      "scope": {
+        "lane": "Tasks",
+        "label": null
+      }
+    },
+    {
+      "id": "fog_count",
+      "name": "FOG episode count",
+      "version": "1",
+      "calculation": "count",
+      "calculation_version": "1",
+      "events": {
+        "lane": "FOG",
+        "label": "FOG"
+      },
+      "scope": {
+        "lane": "Tasks",
+        "label": null
+      }
     }
   ]
 }

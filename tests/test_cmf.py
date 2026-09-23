@@ -10,6 +10,9 @@ import pytest
 from rime_core.cmf import CMFLoader, CMFValidationError
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 def _write_wrapper_package(
     path: Path,
     *,
@@ -50,9 +53,7 @@ def _write_wrapper_package(
             "stride_ms": 500,
             "threshold": 0.5,
         },
-        "output_mappings": [
-            {"output_name": "fog_probability", "lane": "FOG", "label": "FOG"}
-        ],
+        "output_mappings": [{"output_name": "fog_probability", "lane": "FOG", "label": "FOG"}],
     }
     if include_version:
         config["version"] = "0.1.0"
@@ -108,9 +109,7 @@ def _write_point_wrapper_package(path: Path, *, name: str = "PointDemo") -> Path
             "threshold": 0.5,
         },
         "parameters": [],
-        "output_mappings": [
-            {"output_name": "step_times", "lane": "Steps", "label": "step"}
-        ],
+        "output_mappings": [{"output_name": "step_times", "lane": "Steps", "label": "step"}],
     }
 
     (path / "config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -130,7 +129,7 @@ def _write_point_wrapper_package(path: Path, *, name: str = "PointDemo") -> Path
 
 
 def test_load_wrapper_package_directory(tmp_path: Path) -> None:
-    package_dir = _write_wrapper_package(tmp_path / "demo-model.rime")
+    package_dir = _write_wrapper_package(tmp_path / "demo-model.cmf")
 
     package = CMFLoader.load(package_dir)
     output = package.predict({"imu_window": np.zeros((1, 600, 2), dtype=np.float32)})
@@ -150,9 +149,130 @@ def test_load_wrapper_package_directory(tmp_path: Path) -> None:
     assert np.isclose(output["fog_probability"][0], 0.75)
 
 
+def test_load_cmf_11_windowed_operator_contract(tmp_path: Path) -> None:
+    package_dir = _write_wrapper_package(tmp_path / "cmf-11.cmf")
+    config_path = package_dir / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["cmf_version"] = "1.1"
+    config["inference"].update(
+        {
+            "window_anchor": "start",
+            "terminal_window": "drop",
+            "postprocessing": {
+                "merge_gap_ms": 500,
+                "min_duration_ms": 1000,
+            },
+        }
+    )
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    package = CMFLoader.load(package_dir)
+
+    assert package.config.window_anchor == "start"
+    assert package.config.terminal_window == "drop"
+    assert package.config.merge_gap_ms == 500
+    assert package.config.min_duration_ms == 1000
+
+
+@pytest.mark.parametrize(
+    "package_name",
+    [
+        "freeze-index.cmf",
+        "movement-video.cmf",
+        "step-detector.cmf",
+        "walking-classifier.cmf",
+    ],
+)
+def test_bundled_cmf_11_packages_load(package_name: str) -> None:
+    package = CMFLoader.load(ROOT / "models" / package_name)
+
+    assert package.config.cmf_version == "1.1"
+
+
+@pytest.mark.parametrize(
+    ("missing_key", "message"),
+    [
+        ("window_anchor", "window_anchor"),
+        ("terminal_window", "terminal_window"),
+        ("postprocessing", "postprocessing"),
+    ],
+)
+def test_cmf_11_requires_complete_windowed_operator(
+    tmp_path: Path,
+    missing_key: str,
+    message: str,
+) -> None:
+    package_dir = _write_wrapper_package(tmp_path / f"missing-{missing_key}.cmf")
+    config_path = package_dir / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["cmf_version"] = "1.1"
+    config["inference"].update(
+        {
+            "window_anchor": "start",
+            "terminal_window": "drop",
+            "postprocessing": {
+                "merge_gap_ms": 0,
+                "min_duration_ms": 0,
+            },
+        }
+    )
+    config["inference"].pop(missing_key)
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    with pytest.raises(CMFValidationError, match=message):
+        CMFLoader.load(package_dir)
+
+
+def test_cmf_11_rejects_negative_postprocessing_values(tmp_path: Path) -> None:
+    package_dir = _write_wrapper_package(tmp_path / "negative-gap.cmf")
+    config_path = package_dir / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["cmf_version"] = "1.1"
+    config["inference"].update(
+        {
+            "window_anchor": "start",
+            "terminal_window": "drop",
+            "postprocessing": {
+                "merge_gap_ms": -1,
+                "min_duration_ms": 0,
+            },
+        }
+    )
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    with pytest.raises(CMFValidationError, match="merge_gap_ms"):
+        CMFLoader.load(package_dir)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("window_size_ms", 0),
+        ("window_size_ms", True),
+        ("stride_ms", -1),
+        ("stride_ms", True),
+        ("threshold", float("nan")),
+        ("threshold", True),
+    ],
+)
+def test_cmf_rejects_invalid_numeric_execution_values(
+    tmp_path: Path,
+    field: str,
+    value: object,
+) -> None:
+    package_dir = _write_wrapper_package(tmp_path / f"invalid-{field}.cmf")
+    config_path = package_dir / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["inference"][field] = value
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    with pytest.raises(CMFValidationError, match=field):
+        CMFLoader.load(package_dir)
+
+
 def test_load_zip_package(tmp_path: Path) -> None:
     source_dir = _write_wrapper_package(tmp_path / "zip-source")
-    zip_path = tmp_path / "demo-model.rime"
+    zip_path = tmp_path / "demo-model.cmf"
     with zipfile.ZipFile(zip_path, "w") as archive:
         for child in source_dir.iterdir():
             archive.write(child, arcname=f"{source_dir.name}/{child.name}")
@@ -165,8 +285,8 @@ def test_load_zip_package(tmp_path: Path) -> None:
 
 
 def test_scan_skips_invalid_packages(tmp_path: Path) -> None:
-    valid_dir = _write_wrapper_package(tmp_path / "valid-model.rime", name="ValidModel")
-    _write_wrapper_package(tmp_path / "invalid-model.rime", include_version=False)
+    valid_dir = _write_wrapper_package(tmp_path / "valid-model.cmf", name="ValidModel")
+    _write_wrapper_package(tmp_path / "invalid-model.cmf", include_version=False)
     (tmp_path / "README.txt").write_text("ignore me", encoding="utf-8")
 
     packages = CMFLoader.scan(tmp_path)
@@ -176,14 +296,14 @@ def test_scan_skips_invalid_packages(tmp_path: Path) -> None:
 
 
 def test_missing_required_fields_raise_validation_error(tmp_path: Path) -> None:
-    package_dir = _write_wrapper_package(tmp_path / "broken-model.rime", include_version=False)
+    package_dir = _write_wrapper_package(tmp_path / "broken-model.cmf", include_version=False)
 
     with pytest.raises(CMFValidationError, match="version"):
         CMFLoader.load(package_dir)
 
 
 def test_missing_output_mappings_defaults_to_empty_list(tmp_path: Path) -> None:
-    package_dir = _write_wrapper_package(tmp_path / "no-mappings.rime")
+    package_dir = _write_wrapper_package(tmp_path / "no-mappings.cmf")
     config = json.loads((package_dir / "config.json").read_text(encoding="utf-8"))
     config.pop("output_mappings")
     (package_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -194,7 +314,7 @@ def test_missing_output_mappings_defaults_to_empty_list(tmp_path: Path) -> None:
 
 
 def test_malformed_output_mappings_raise_validation_error(tmp_path: Path) -> None:
-    package_dir = _write_wrapper_package(tmp_path / "bad-mappings.rime")
+    package_dir = _write_wrapper_package(tmp_path / "bad-mappings.cmf")
     config = json.loads((package_dir / "config.json").read_text(encoding="utf-8"))
     config["output_mappings"] = [{"output_name": "fog_probability", "lane": "FOG"}]
     (package_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -205,7 +325,7 @@ def test_malformed_output_mappings_raise_validation_error(tmp_path: Path) -> Non
 
 def test_load_declared_requirements_and_detect_missing_imports(tmp_path: Path) -> None:
     package_dir = _write_wrapper_package(
-        tmp_path / "requirements-demo.rime",
+        tmp_path / "requirements-demo.cmf",
         requirements=[
             {
                 "package": "numpy",
@@ -232,7 +352,7 @@ def test_load_declared_requirements_and_detect_missing_imports(tmp_path: Path) -
 
 
 def test_invalid_requirements_raise_validation_error(tmp_path: Path) -> None:
-    package_dir = _write_wrapper_package(tmp_path / "bad-requirements.rime")
+    package_dir = _write_wrapper_package(tmp_path / "bad-requirements.cmf")
     config = json.loads((package_dir / "config.json").read_text(encoding="utf-8"))
     config["requirements"] = [{"package": "opencv-contrib-python"}]
     (package_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -242,7 +362,7 @@ def test_invalid_requirements_raise_validation_error(tmp_path: Path) -> None:
 
 
 def test_load_point_wrapper_package_without_windowing(tmp_path: Path) -> None:
-    package_dir = _write_point_wrapper_package(tmp_path / "point-model.rime")
+    package_dir = _write_point_wrapper_package(tmp_path / "point-model.cmf")
 
     package = CMFLoader.load(package_dir)
     output = package.predict({"trunk_accel": np.zeros((8, 2), dtype=np.float32)})
@@ -254,7 +374,7 @@ def test_load_point_wrapper_package_without_windowing(tmp_path: Path) -> None:
 
 
 def test_onnx_runtime_is_rejected(tmp_path: Path) -> None:
-    package_dir = _write_wrapper_package(tmp_path / "onnx-model.rime")
+    package_dir = _write_wrapper_package(tmp_path / "onnx-model.cmf")
     config = json.loads((package_dir / "config.json").read_text(encoding="utf-8"))
     config["runtime"] = {"type": "onnx", "entry": "model.onnx"}
     (package_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")

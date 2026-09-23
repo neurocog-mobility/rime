@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -10,9 +9,7 @@ from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from rime_core.annotations import Annotation, AnnotationStore
-from rime_core.rule_engine import RuleEngine
 from rime_core.schema import ProtocolSchema
-from rime_ui.windows.main_window import RimeMainWindow
 from rime_ui.timeline import TimelineWidget
 from rime_ui.timeline import annotation_indicator_symbols
 
@@ -31,34 +28,6 @@ def test_annotation_indicator_symbols_cover_ghost_and_violation_states() -> None
     assert annotation_indicator_symbols(ghost=True, violating=True) == ("?", "!")
 
 
-def test_main_window_computes_persistent_violation_ids_from_live_store() -> None:
-    _app()
-    window = RimeMainWindow()
-    store = AnnotationStore()
-    store.add(Annotation(id="c1", lane="Core", label="Core", start_ms=100.0, end_ms=400.0))
-
-    window.annotations = store
-    window.context = SimpleNamespace(rule_engine=RuleEngine(ProtocolSchema.default()))
-
-    violation_ids = window._compute_rule_violation_ids()
-
-    assert violation_ids == {"c1"}
-
-    store.add(
-        Annotation(
-            id="m1",
-            lane="Manifestations",
-            label="Akinetic",
-            start_ms=500.0,
-            end_ms=600.0,
-        )
-    )
-
-    violation_ids = window._compute_rule_violation_ids()
-
-    assert violation_ids == {"c1", "m1"}
-
-    window.close()
 
 
 def test_status_badges_do_not_change_interval_fill_color() -> None:
@@ -224,3 +193,38 @@ def test_selected_interval_fill_does_not_inherit_previous_badge_brush() -> None:
     assert selected == plain
 
     timeline.close()
+
+
+def test_timeline_paint_scans_sources_once_per_lane_and_refreshes_after_edits(monkeypatch):
+    from rime_ui.timeline import AnnotationLanes
+
+    _app()
+    schema = ProtocolSchema.default()
+    lane = schema.lanes[0]
+    lanes = AnnotationLanes(schema, single_set=True)
+    lanes.resize(1200, 400)
+    store = AnnotationStore()
+    for i in range(200):
+        store.add(Annotation(str(i), lane.name, lane.labels[0], i * 20, i * 20 + 10))
+    lanes.set_store(store)
+    lanes.set_duration(4000)
+    calls = []
+    compute = lanes._compute_lane_sources
+
+    def counted(level):
+        calls.append(level)
+        return compute(level)
+
+    monkeypatch.setattr(lanes, "_compute_lane_sources", counted)
+    lanes.show()
+    QApplication.processEvents()
+    calls.clear()
+    lanes.grab()
+    assert calls.count(lane.level) == 1
+    assert lanes._paint_lane_sources is None
+    assert lanes._lane_sources(lane.level) == ["manual"]
+    store.add(Annotation("proposal", lane.name, lane.labels[0], 0, 10, ghost=True))
+    lanes.grab()
+    assert lanes._lane_sources(lane.level) == ["manual", "suggestions"]
+    lanes.close()
+    lanes.deleteLater()

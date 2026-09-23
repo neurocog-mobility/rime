@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication
 
 from rime_core.annotations import Annotation, AnnotationStore
 from rime_core.schema import ProtocolSchema
-from rime_ui.timeline import TimelineWidget
+from rime_ui.timeline import AnnotationLanes, TimelineWidget
 
 
 def _app() -> QApplication:
@@ -234,3 +234,82 @@ def test_timeline_double_click_requests_accept_for_ghost_only() -> None:
     assert accepted == ["ghost1"]
 
     timeline.close()
+
+
+def test_playback_strip_hover_click_and_drag_leave_annotations_unchanged():
+    app = _app()
+    lanes = AnnotationLanes(ProtocolSchema.default(), single_set=True)
+    lanes.native_palette = True
+    store = AnnotationStore()
+    annotation = Annotation("event", "FOG", "FOG", 1000, 2000)
+    store.add(annotation)
+    lanes.set_store(store)
+    lanes.set_duration(10000)
+    lanes.resize(1100, lanes.minimumHeight())
+    lanes.show()
+    app.processEvents()
+    positions, creations, edits = [], [], []
+    lanes.position_clicked.connect(positions.append)
+    lanes.annotation_created.connect(lambda *args: creations.append(args))
+    lanes.annotation_modified.connect(lambda *args: edits.append(args))
+    def point(time):
+        return QPoint(round(lanes._time_to_x(time)), 8)
+
+    QTest.mouseMove(lanes, point(3000))
+    assert not positions
+    assert lanes.cursor().shape() == Qt.CursorShape.PointingHandCursor
+    assert abs(lanes._seek_hover_ms - 3000) < 15
+    QTest.mouseClick(lanes, Qt.MouseButton.LeftButton, pos=point(3000))
+    assert abs(positions[-1] - 3000) < 15
+    handle = QPoint(round(lanes._time_to_x(positions[-1])), 9)
+    QTest.mouseMove(lanes, handle)
+    assert lanes.cursor().shape() == Qt.CursorShape.OpenHandCursor
+    QTest.mousePress(lanes, Qt.MouseButton.LeftButton, pos=handle)
+    QTest.mouseMove(lanes, point(5000))
+    assert abs(positions[-1] - 5000) < 15  # Updates before release.
+    QTest.mouseRelease(lanes, Qt.MouseButton.LeftButton, pos=point(6000))
+    assert abs(positions[-1] - 6000) < 15
+    assert not creations and not edits
+    assert (annotation.start_ms, annotation.end_ms) == (1000, 2000)
+    # The descriptive gutter is not part of the seek target.
+    count = len(positions)
+    QTest.mouseClick(lanes, Qt.MouseButton.LeftButton, pos=QPoint(10, 8))
+    assert len(positions) == count
+    lanes.close()
+    lanes.deleteLater()
+    app.processEvents()
+
+
+def test_playback_scrubbing_keeps_loop_and_snap_markers_and_clamps_to_view():
+    app = _app()
+    lanes = AnnotationLanes(ProtocolSchema.default(), single_set=True)
+    lanes.native_palette = True
+    lanes.set_schema(lanes.schema)
+    lanes.set_duration(10000)
+    lanes.set_view_range(2000, 6000)
+    lanes.set_loop_region(3000, 5000)
+    lanes.add_snap_point(4000)
+    lanes.resize(1100, lanes.minimumHeight())
+    lanes.show()
+    app.processEvents()
+    positions = []
+    lanes.position_clicked.connect(positions.append)
+    # Upper ruler seeks even above a snap marker or loop region.
+    QTest.mousePress(lanes, Qt.MouseButton.LeftButton, pos=QPoint(round(lanes._time_to_x(4000)), 8))
+    QTest.mouseMove(lanes, QPoint(lanes.width() + 50, 8))
+    assert positions[-1] == 6000
+    QTest.mouseRelease(lanes, Qt.MouseButton.LeftButton, pos=QPoint(0, 8))
+    assert positions[-1] == 2000
+    assert lanes.get_loop_region() == (3000, 5000)
+    assert lanes.get_snap_points() == [4000]
+    # Lower marker band still supports snap-point dragging.
+    lanes.clear_loop_region()
+    start = QPoint(round(lanes._time_to_x(4000)), lanes._ruler_height - 6)
+    end = QPoint(round(lanes._time_to_x(4500)), lanes._ruler_height - 6)
+    QTest.mousePress(lanes, Qt.MouseButton.LeftButton, pos=start)
+    QTest.mouseMove(lanes, end)
+    QTest.mouseRelease(lanes, Qt.MouseButton.LeftButton, pos=end)
+    assert abs(lanes.get_snap_points()[0] - 4500) < 15
+    lanes.close()
+    lanes.deleteLater()
+    app.processEvents()

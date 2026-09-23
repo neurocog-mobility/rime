@@ -11,6 +11,11 @@ from typing import Literal
 
 AnnotationSource = Literal["manual", "corrected", "elan_import"] | str
 AnnotationEventType = Literal["interval", "point"]
+ConfidenceType = Literal[
+    "human_rating",
+    "model_probability",
+    "not_recorded",
+]
 
 
 def _annotation_sort_key(annotation: Annotation) -> tuple[float, float, str]:
@@ -30,6 +35,7 @@ class Annotation:
     source: AnnotationSource = "manual"
     ghost: bool = False
     confidence: float = 1.0
+    confidence_type: ConfidenceType = "human_rating"
     human_modified: bool = False
     origin_confidence: float | None = None
     origin_start_ms: float | None = None
@@ -54,8 +60,6 @@ class AnnotationStore:
 
     def __init__(self) -> None:
         self.annotations: dict[str, Annotation] = {}
-        self._session_id: str = ""
-        self._session_name: str = ""
 
     def add(self, annotation: Annotation) -> None:
         self.annotations[annotation.id] = annotation
@@ -115,6 +119,7 @@ class AnnotationStore:
                 "source": ann.source,
                 "ghost": ann.ghost,
                 "confidence": ann.confidence,
+                "confidence_type": ann.confidence_type,
                 "human_modified": ann.human_modified,
                 "origin_confidence": ann.origin_confidence,
                 "origin_start_ms": ann.origin_start_ms,
@@ -123,8 +128,6 @@ class AnnotationStore:
             for ann in sorted(self.annotations.values(), key=_annotation_sort_key)
         ]
         return {
-            "version": "1.1",
-            "session": {"id": self._session_id, "name": self._session_name},
             "annotations": serialized,
         }
 
@@ -137,10 +140,9 @@ class AnnotationStore:
     @classmethod
     def from_dict(cls, data: dict) -> AnnotationStore:
         """Deserialize from an in-memory dictionary (counterpart to to_dict)."""
+        if set(data) != {"annotations"}:
+            raise ValueError("Expected native annotation contents.")
         store = cls()
-        session = data.get("session", {})
-        store._session_id = session.get("id", "")
-        store._session_name = session.get("name", "")
 
         for raw in data.get("annotations", []):
             store.add(
@@ -154,6 +156,7 @@ class AnnotationStore:
                     source=raw.get("source", "manual"),
                     ghost=raw.get("ghost", False),
                     confidence=raw.get("confidence", 1.0),
+                    confidence_type=raw["confidence_type"],
                     human_modified=raw.get("human_modified", False),
                     origin_confidence=raw.get("origin_confidence"),
                     origin_start_ms=raw.get("origin_start_ms"),

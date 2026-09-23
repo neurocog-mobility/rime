@@ -1,4 +1,4 @@
-"""ELAN import utilities for converting .eaf data into RIME sessions."""
+"""ELAN import utilities for converting .eaf data into native annotation sets and workspaces."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ import pympi
 from rime_core.annotations import Annotation, AnnotationStore, generate_id
 from rime_core.rule_engine import RuleEngine, SideEffect, Violation
 from rime_core.schema import ProtocolSchema
-from rime_core.sessions import SignalConfig, Session, SessionProvenance, VideoConfig, create_session
+from rime_core.records import VideoSource, ImportProvenance
+from rime_core.workspace.models import SignalSelection
 
 
 @dataclass
@@ -154,6 +155,7 @@ def import_eaf(
                     event_type="point" if is_point_lane else "interval",
                     source="elan_import",
                     ghost=False,
+                    confidence_type="not_recorded",
                 )
             )
 
@@ -174,62 +176,34 @@ def import_eaf(
     )
 
 
-def import_session_from_elan(
+def import_workspace_from_elan(
     eaf_path: Path,
-    session_dir: Path,
+    directory: Path,
     schema: ProtocolSchema,
     tier_map: dict[str, str] | None = None,
     label_map: dict[str, str] | None = None,
     apply_rules: bool = True,
     additional_videos: list[str] | None = None,
-    additional_signals: list[SignalConfig] | None = None,
-) -> tuple[Session, ImportResult]:
-    """Create a RIME session directory from an ELAN file and imported annotations."""
-    result = import_eaf(
-        path=eaf_path,
-        schema=schema,
-        tier_map=tier_map,
-        label_map=label_map,
-        apply_rules=apply_rules,
+    additional_signals: list[SignalSelection] | None = None,
+):
+    """Import external EAF directly into native annotation and recording objects."""
+    from rime_core.workspace.context import WorkingContext
+
+    result = import_eaf(eaf_path, schema, tier_map, label_map, apply_rules)
+    context = WorkingContext.create_workspace(
+        directory, eaf_path.stem, schema=schema,
+        videos=[(path, VideoSource()) for path in additional_videos or []],
+        signals=additional_signals,
     )
-
-    # ELAN-linked media paths are intentionally ignored for session creation.
-    # Videos must be user-selected explicitly via the import UI.
-    videos: list[VideoConfig] = []
-    for path in additional_videos or []:
-        if path in [video.path for video in videos]:
-            continue
-        role = "primary" if not videos else "secondary"
-        videos.append(VideoConfig(path=path, role=role))
-
-    tier_mapping = {
-        mapping.elan_tier: mapping.rime_lane
-        for mapping in result.tier_mappings
-        if mapping.rime_lane is not None
-    }
-
-    provenance = SessionProvenance(
-        origin="elan_import",
-        source_files=[str(eaf_path)],
-        tier_map=tier_mapping,
-        label_map=result.label_mappings,
-        rules_applied=apply_rules,
+    context.annotation_set.annotations = result.store
+    context.annotation_set.name = eaf_path.stem
+    context.annotation_set.provenance = ImportProvenance(
+        origin="elan_import", source_files=[eaf_path.name],
+        tier_map={m.elan_tier: m.rime_lane for m in result.tier_mappings if m.rime_lane},
+        label_map=result.label_mappings, rules_applied=apply_rules,
     )
-    session = create_session(
-        session_dir=Path(session_dir),
-        name=eaf_path.stem,
-        videos=videos,
-        signals=list(additional_signals or []),
-        subject=None,
-        provenance=provenance,
-    )
-
-    annotations_path = session.session_dir / "annotations" / "annotations.json"
-    result.store._session_id = session.id
-    result.store._session_name = session.name
-    result.store.save(annotations_path)
-
-    return session, result
+    context.save()
+    return context, result
 
 
 def _normalize(value: str) -> str:

@@ -20,7 +20,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from rime_core.sessions import SignalConfig
+from rime_core.records import SignalSource
+from rime_core.workspace.models import SignalSelection
 from rime_core.signals import detect_signal_config
 
 
@@ -43,8 +44,11 @@ class SignalConfigDialog(QDialog):
         self._display_channel_boxes: list[QCheckBox] = []
 
         self.setWindowTitle(f"Add Signal: {self._signal_path.name}")
-        self.setMinimumWidth(520)
         self._setup_ui()
+        from rime_ui.presentation.style import polish_surface
+
+        polish_surface(self)
+        self.adjustSize()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -81,7 +85,12 @@ class SignalConfigDialog(QDialog):
         form.addRow("Time unit:", self.time_unit_combo)
 
         layout.addLayout(form)
-        layout.addWidget(self._build_available_channels_box())
+        from rime_ui.presentation.components import ContentScrollArea
+
+        available = ContentScrollArea()
+        available.setWidget(self._build_available_channels_box())
+        available.setMaximumHeight(140)
+        layout.addWidget(available)
         layout.addWidget(self._build_display_channels_box())
 
         button_row = QHBoxLayout()
@@ -134,10 +143,9 @@ class SignalConfigDialog(QDialog):
         layout.addWidget(scroll)
         return box
 
-    def to_signal_config(self) -> SignalConfig:
+    def to_signal_config(self) -> SignalSelection:
         """Build a signal config from the dialog state."""
-        return SignalConfig(
-            path=self._stored_path,
+        return SignalSelection(self._stored_path, SignalSource(
             name=self._signal_path.stem,
             type="imu",
             format="csv",
@@ -147,10 +155,9 @@ class SignalConfigDialog(QDialog):
             time_unit=self.time_unit_combo.currentText(),
             offset_ms=0.0,
             channels=list(self._detected_channels),
-            display_channels=[
+        ), display_channels=[
                 checkbox.text() for checkbox in self._display_channel_boxes if checkbox.isChecked()
-            ],
-        )
+        ])
 
     @classmethod
     def configure_signal(
@@ -158,7 +165,7 @@ class SignalConfigDialog(QDialog):
         signal_path: str | Path,
         stored_path: str,
         parent: QWidget | None = None,
-    ) -> SignalConfig | None:
+    ) -> SignalSelection | None:
         """Run the dialog and return a confirmed signal config."""
         try:
             detected = detect_signal_config(signal_path)

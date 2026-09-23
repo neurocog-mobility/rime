@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from rime_core.sessions import VideoConfig
+from rime_core.records import VideoSource
 from rime_ui.theme import (
     COLOR_VIDEO_BG,
     media_controls_stylesheet,
@@ -87,9 +87,7 @@ class _VideoPane(QWidget):
         self._label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self._label.setStyleSheet(video_overlay_label_stylesheet())
         label_container = QWidget()
-        label_container.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
-        )
+        label_container.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         label_layout = QVBoxLayout(label_container)
         set_zero_margins(label_layout)
         label_layout.addWidget(
@@ -99,31 +97,30 @@ class _VideoPane(QWidget):
         layout.addWidget(label_container)
 
         self.offset_ms = 0.0
-        self._config: VideoConfig | None = None
+        self._config: VideoSource | None = None
         self._first_frame_shown = False
 
         self.player.mediaStatusChanged.connect(self._on_media_status)
 
-    def load(self, config: VideoConfig, base_dir: Path) -> None:
+    def load(self, config: VideoSource, location: str | None) -> None:
         """Load a video from config."""
         self._config = config
         self.offset_ms = config.offset_ms
-        label = config.label or _infer_label(config.path)
+        label = config.label or _infer_label(config.file_name)
         self._label.setText(label)
         self._label.setVisible(bool(label))
         self._first_frame_shown = False
 
-        video_path = base_dir / config.path
-        self.player.setSource(QUrl.fromLocalFile(str(video_path)))
+        self.player.setSource(QUrl.fromLocalFile(location) if location else QUrl())
+        if not location or not Path(location).is_file():
+            self._label.setText(f"{label or config.file_name} — recording unavailable")
+            self._label.setVisible(True)
 
     def get_label(self) -> str:
         return self._label.text()
 
     def _on_media_status(self, status: QMediaPlayer.MediaStatus) -> None:
-        if (
-            status == QMediaPlayer.MediaStatus.LoadedMedia
-            and not self._first_frame_shown
-        ):
+        if status == QMediaPlayer.MediaStatus.LoadedMedia and not self._first_frame_shown:
             self._first_frame_shown = True
             self.player.play()
             QTimer.singleShot(50, self._pause_first_frame)
@@ -228,7 +225,7 @@ class MultiViewPlayer(QWidget):
     # Video loading
     # ------------------------------------------------------------------
 
-    def load_videos(self, videos: list[VideoConfig], session_dir: Path) -> None:
+    def load_videos(self, videos: list[VideoSource], locations: dict[str, str]) -> None:
         """Load one or more videos. First 'primary' role video drives timing."""
         for pane in self._panes:
             pane.player.stop()
@@ -249,7 +246,7 @@ class MultiViewPlayer(QWidget):
         # Create panes
         for i, vc in enumerate(videos):
             pane = _VideoPane()
-            pane.load(vc, session_dir)
+            pane.load(vc, locations.get(vc.id))
             if i == self._primary_index:
                 pane.audio.setVolume(1.0)
             else:
@@ -323,9 +320,7 @@ class MultiViewPlayer(QWidget):
             self._build_single(self._primary_index)
         elif self._display_mode == MODE_SECONDARY_ONLY:
             # Show first secondary
-            sec_idx = next(
-                (i for i in range(len(self._panes)) if i != self._primary_index), 0
-            )
+            sec_idx = next((i for i in range(len(self._panes)) if i != self._primary_index), 0)
             self._build_single(sec_idx)
 
     def _build_side_by_side(self) -> None:
@@ -379,9 +374,7 @@ class MultiViewPlayer(QWidget):
         if not self._panes:
             return
         primary = self._panes[self._primary_index]
-        is_playing = (
-            primary.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
-        )
+        is_playing = primary.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
         if is_playing:
             for pane in self._panes:
                 pane.player.pause()
@@ -397,6 +390,7 @@ class MultiViewPlayer(QWidget):
             return
         self._panes[self._primary_index].player.setPosition(ms)
         self._sync_secondaries(ms)
+        self._update_secondary_coverage(ms)
 
     def get_position_ms(self) -> int:
         if not self._panes:
@@ -411,7 +405,7 @@ class MultiViewPlayer(QWidget):
         for i, pane in enumerate(self._panes):
             if i == self._primary_index:
                 continue
-            target = int(primary_pos_ms + pane.offset_ms)
+            target = int(primary_pos_ms - pane.offset_ms)
             pane.player.setPosition(max(0, target))
 
     # ------------------------------------------------------------------
@@ -494,10 +488,33 @@ class MultiViewPlayer(QWidget):
         # Secondaries play in parallel at the same rate,
         # staying in sync naturally. Only explicit seeks sync them.
 
+        self._update_secondary_coverage(position_ms)
         self.position_label.setText(self._format_time(position_ms))
 
         # Forward signal
         self.position_changed.emit(position_ms)
+
+    def _update_secondary_coverage(self, primary_ms: int) -> None:
+        """Hold an offset view outside its evidence range; resume on entry, without frame-by-frame seeks."""
+        if not self._panes:
+            return
+        playing = (
+            self._panes[self._primary_index].player.playbackState()
+            == QMediaPlayer.PlaybackState.PlayingState
+        )
+        for index, pane in enumerate(self._panes):
+            if index == self._primary_index or pane.player.duration() <= 0:
+                continue
+            target = primary_ms - pane.offset_ms
+            available = 0 <= target < pane.player.duration()
+            pane.video_widget.setVisible(available)
+            title = pane._config.label or pane._config.name or pane._config.file_name
+            pane._label.setText(title if available else f"{title} · outside recording")
+            if not available:
+                pane.player.pause()
+            elif playing and pane.player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+                pane.player.setPosition(int(target))
+                pane.player.play()
 
     def _on_duration_changed(self, duration_ms: int) -> None:
         self._duration_ms = duration_ms
@@ -511,6 +528,9 @@ class MultiViewPlayer(QWidget):
             self.play_btn.setText("⏸")
         else:
             self.play_btn.setText("▶")
+            for index, pane in enumerate(self._panes):
+                if index != self._primary_index:
+                    pane.player.pause()
 
     def _on_error(self, error: QMediaPlayer.Error, error_string: str) -> None:
         if error != QMediaPlayer.Error.NoError:
@@ -541,13 +561,9 @@ class MultiViewPlayer(QWidget):
 
         step = 0
         if key == Qt.Key.Key_Left:
-            step = -FRAME_DURATION_MS * (
-                10 if modifiers & Qt.KeyboardModifier.ShiftModifier else 1
-            )
+            step = -FRAME_DURATION_MS * (10 if modifiers & Qt.KeyboardModifier.ShiftModifier else 1)
         elif key == Qt.Key.Key_Right:
-            step = FRAME_DURATION_MS * (
-                10 if modifiers & Qt.KeyboardModifier.ShiftModifier else 1
-            )
+            step = FRAME_DURATION_MS * (10 if modifiers & Qt.KeyboardModifier.ShiftModifier else 1)
         elif key == Qt.Key.Key_Space:
             self._toggle_play()
             event.accept()

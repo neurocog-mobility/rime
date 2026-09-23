@@ -55,6 +55,10 @@ class CMFConfig:
     parameters: list[dict[str, Any]]
     labels: dict[str, Any]
     output_mappings: list[dict[str, str]]
+    window_anchor: str = "start"
+    terminal_window: str = "drop"
+    merge_gap_ms: int = 0
+    min_duration_ms: int = 0
     requirements: list[CMFRequirement] = field(default_factory=list)
 
 
@@ -110,8 +114,10 @@ class CMFLoader:
 
     @staticmethod
     def load(path: str | Path) -> CMFPackage:
-        """Load a single .rime package (directory or zip)."""
+        """Load a single .cmf package (directory or zip)."""
         source_path = Path(path).expanduser()
+        if source_path.suffix != ".cmf":
+            raise CMFValidationError("Model packages must use the .cmf extension.")
         if not source_path.exists():
             raise CMFValidationError(f"CMF package not found: {source_path}")
 
@@ -120,7 +126,9 @@ class CMFLoader:
             model_dir = CMFLoader._resolve_package_root(source_path)
         else:
             if not zipfile.is_zipfile(source_path):
-                raise CMFValidationError(f"CMF package is not a directory or zip archive: {source_path}")
+                raise CMFValidationError(
+                    f"CMF package is not a directory or zip archive: {source_path}"
+                )
             temp_dir = TemporaryDirectory(prefix="rime-cmf-")
             with zipfile.ZipFile(source_path) as archive:
                 archive.extractall(temp_dir.name)
@@ -137,7 +145,7 @@ class CMFLoader:
 
     @staticmethod
     def scan(models_dir: str | Path) -> list[CMFPackage]:
-        """Scan a directory for .rime packages and load all valid ones."""
+        """Scan a directory for .cmf packages and load all valid ones."""
         root = Path(models_dir).expanduser()
         if not root.exists():
             raise FileNotFoundError(f"Models directory not found: {root}")
@@ -157,8 +165,8 @@ class CMFLoader:
     @staticmethod
     def _looks_like_package(path: Path) -> bool:
         if path.is_dir():
-            return path.suffix == ".rime" or (path / "config.json").exists()
-        return path.suffix in {".rime", ".zip"} and path.is_file()
+            return path.suffix == ".cmf"
+        return path.suffix == ".cmf" and path.is_file()
 
     @staticmethod
     def _resolve_package_root(path: Path) -> Path:
@@ -194,6 +202,10 @@ class CMFLoader:
 
         runtime = raw.get("runtime", {})
         inference = raw.get("inference", {})
+        if not isinstance(runtime, dict):
+            raise CMFValidationError(f"'runtime' must be an object in {config_path}")
+        if not isinstance(inference, dict):
+            raise CMFValidationError(f"'inference' must be an object in {config_path}")
 
         runtime_type = raw.get("runtime_type", runtime.get("type"))
         runtime_entry = raw.get("runtime_entry", runtime.get("entry"))
@@ -207,7 +219,10 @@ class CMFLoader:
 
         inputs = CMFLoader._require_list(raw, "inputs", config_path)
         outputs = CMFLoader._require_list(raw, "outputs", config_path)
-        cmf_version = CMFLoader._require_str(raw, "cmf_version", config_path, fallback_key="schema_version")
+        cmf_version = CMFLoader._require_str(
+            raw, "cmf_version", config_path, fallback_key="schema_version"
+        )
+        requires_explicit_operator = CMFLoader._version_at_least(cmf_version, 1, 1)
         name = CMFLoader._require_str(raw, "name", config_path)
         version = CMFLoader._require_str(raw, "version", config_path)
         runtime_entry = CMFLoader._require_str(
@@ -217,9 +232,7 @@ class CMFLoader:
         )
         inference_mode = str(inference.get("mode", "whole_signal")).casefold()
         if inference_mode not in {"whole_signal", "windowed"}:
-            raise CMFValidationError(
-                f"Invalid inference mode '{inference_mode}' in {config_path}"
-            )
+            raise CMFValidationError(f"Invalid inference mode '{inference_mode}' in {config_path}")
         if inference_mode == "windowed":
             window_size_ms = CMFLoader._require_int(
                 {"window_size_ms": raw.get("window_size_ms", inference.get("window_size_ms"))},
@@ -231,9 +244,68 @@ class CMFLoader:
                 "stride_ms",
                 config_path,
             )
+            window_anchor_value = raw.get(
+                "window_anchor",
+                inference.get("window_anchor"),
+            )
+            terminal_window_value = raw.get(
+                "terminal_window",
+                inference.get("terminal_window"),
+            )
+            if requires_explicit_operator and window_anchor_value is None:
+                raise CMFValidationError(
+                    f"CMF {cmf_version} requires 'window_anchor' in {config_path}"
+                )
+            if requires_explicit_operator and terminal_window_value is None:
+                raise CMFValidationError(
+                    f"CMF {cmf_version} requires 'terminal_window' in {config_path}"
+                )
+            window_anchor = str(window_anchor_value or "start").casefold()
+            terminal_window = str(terminal_window_value or "drop").casefold()
+            if window_anchor != "start":
+                raise CMFValidationError(
+                    f"Invalid 'window_anchor' in {config_path}; CMF currently supports only 'start'"
+                )
+            if terminal_window != "drop":
+                raise CMFValidationError(
+                    f"Invalid 'terminal_window' in {config_path}; CMF currently supports only 'drop'"
+                )
+
+            postprocessing = raw.get(
+                "postprocessing",
+                inference.get("postprocessing"),
+            )
+            if requires_explicit_operator and postprocessing is None:
+                raise CMFValidationError(
+                    f"CMF {cmf_version} requires 'postprocessing' in {config_path}"
+                )
+            if postprocessing is None:
+                postprocessing = {}
+            if not isinstance(postprocessing, dict):
+                raise CMFValidationError(f"'postprocessing' must be an object in {config_path}")
+            if requires_explicit_operator:
+                for key in ("merge_gap_ms", "min_duration_ms"):
+                    if key not in postprocessing:
+                        raise CMFValidationError(
+                            f"CMF {cmf_version} requires 'postprocessing.{key}' in {config_path}"
+                        )
+            merge_gap_ms = CMFLoader._require_nonnegative_int(
+                {"merge_gap_ms": postprocessing.get("merge_gap_ms", 0)},
+                "merge_gap_ms",
+                config_path,
+            )
+            min_duration_ms = CMFLoader._require_nonnegative_int(
+                {"min_duration_ms": postprocessing.get("min_duration_ms", 0)},
+                "min_duration_ms",
+                config_path,
+            )
         else:
             window_size_ms = None
             stride_ms = None
+            window_anchor = "start"
+            terminal_window = "drop"
+            merge_gap_ms = 0
+            min_duration_ms = 0
         threshold = CMFLoader._require_float(
             {"threshold": raw.get("threshold", inference.get("threshold"))},
             "threshold",
@@ -301,6 +373,10 @@ class CMFLoader:
             parameters=parameters,
             labels=labels,
             output_mappings=output_mappings,
+            window_anchor=window_anchor,
+            terminal_window=terminal_window,
+            merge_gap_ms=merge_gap_ms,
+            min_duration_ms=min_duration_ms,
             requirements=requirements,
         )
 
@@ -318,9 +394,7 @@ class CMFLoader:
         spec.loader.exec_module(module)
         model_cls = getattr(module, "CMFModel", None)
         if model_cls is None:
-            raise CMFValidationError(
-                f"Wrapper module must define CMFModel: {entry_path}"
-            )
+            raise CMFValidationError(f"Wrapper module must define CMFModel: {entry_path}")
 
         return CMFLoader._instantiate_wrapper(model_cls, model_dir)
 
@@ -368,16 +442,36 @@ class CMFLoader:
     @staticmethod
     def _require_int(raw: dict[str, Any], key: str, config_path: Path) -> int:
         value = raw.get(key)
-        if not isinstance(value, int) or value <= 0:
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise CMFValidationError(f"Missing or invalid '{key}' in {config_path}")
+        return value
+
+    @staticmethod
+    def _require_nonnegative_int(raw: dict[str, Any], key: str, config_path: Path) -> int:
+        value = raw.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
             raise CMFValidationError(f"Missing or invalid '{key}' in {config_path}")
         return value
 
     @staticmethod
     def _require_float(raw: dict[str, Any], key: str, config_path: Path) -> float:
         value = raw.get(key)
-        if not isinstance(value, (int, float)):
+        if (
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or not np.isfinite(value)
+        ):
             raise CMFValidationError(f"Missing or invalid '{key}' in {config_path}")
         return float(value)
+
+    @staticmethod
+    def _version_at_least(version: str, major: int, minor: int) -> bool:
+        try:
+            parts = version.split(".")
+            parsed = (int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+        except (TypeError, ValueError) as exc:
+            raise CMFValidationError(f"Invalid 'cmf_version': {version}") from exc
+        return parsed >= (major, minor)
 
     @staticmethod
     def _load_requirements(raw: dict[str, Any], config_path: Path) -> list[CMFRequirement]:

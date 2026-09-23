@@ -13,8 +13,11 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
-import tomllib
-from typing import Any
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
+from typing import Any, TYPE_CHECKING
 
 import pandas as pd
 
@@ -22,11 +25,14 @@ from rime_core.annotations import Annotation, AnnotationStore
 from rime_core.common.intervals import interval_iou, union_duration_ms
 from rime_core.coverage import CoverageSpec, compute_coverage
 from rime_core.irr import IRRResult, format_irr_value
-from rime_core.sessions import Session, SignalConfig
+from rime_core.records import SignalSource
+
+if TYPE_CHECKING:
+    from rime_core.workspace.context import WorkingContext
 from rime_core.signals import Signal
 
 
-ExportFn = Callable[[AnnotationStore, Session, Path, bool], None]
+ExportFn = Callable[[AnnotationStore, "WorkingContext", Path, bool], None]
 _FFMPEG_FALLBACK_PATHS = (
     Path("/opt/homebrew/bin/ffmpeg"),
     Path("/usr/local/bin/ffmpeg"),
@@ -45,14 +51,14 @@ class ExportError(Exception):
 class BidsSignalInput:
     """Pair a loaded signal with the config used to interpret it."""
 
-    config: SignalConfig
+    config: SignalSource
     signal: Signal
     tracksys: str
 
 
 @dataclass(frozen=True)
 class BIDSSessionPaths:
-    """Canonical BIDS paths for one exported session."""
+    """Canonical BIDS paths for one exported context."""
 
     output_root: Path
     subject_label: str
@@ -147,7 +153,7 @@ class ExporterRegistry:
         self,
         format_name: str,
         store: AnnotationStore,
-        session: Session,
+        context: WorkingContext,
         output_path: Path,
         include_ghost: bool = False,
     ) -> None:
@@ -156,7 +162,7 @@ class ExporterRegistry:
         if exporter is None:
             raise ExportError(f"No exporter registered for format '{format_name}'")
         try:
-            exporter(store, session, output_path, include_ghost)
+            exporter(store, context, output_path, include_ghost)
         except ExportError:
             raise
         except Exception as exc:  # pragma: no cover - exercised via exporter tests
@@ -165,21 +171,21 @@ class ExporterRegistry:
 
 def export_parquet(
     store: AnnotationStore,
-    session: Session,
+    context: WorkingContext,
     output_path: Path,
     include_ghost: bool = False,
 ) -> None:
     """Export annotations to benchmark-ready Parquet."""
     export_timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    subject_id = session.subject.id if session.subject is not None else ""
+    subject_id = context.research.participant_id
     rows: list[dict[str, object]] = []
 
     for annotation in _filtered_annotations(store, include_ghost=include_ghost):
         rows.append(
             {
-                "session_id": session.id,
+                "annotation_set_id": context.annotation_set.id,
                 "subject_id": subject_id,
-                "session_name": session.name,
+                "annotation_set_name": context.annotation_set.name,
                 "annotation_id": annotation.id,
                 "lane": annotation.lane,
                 "label": annotation.label,
@@ -190,8 +196,9 @@ def export_parquet(
                 "source": annotation.source,
                 "ghost": annotation.ghost,
                 "confidence": annotation.confidence,
+                "confidence_type": annotation.confidence_type,
                 "export_timestamp": export_timestamp,
-                "rater": session.rater,
+                "rater": context.annotation_set.rater,
                 "human_modified": annotation.human_modified,
                 "origin_confidence": annotation.origin_confidence,
                 "origin_start_ms": annotation.origin_start_ms,
@@ -202,9 +209,9 @@ def export_parquet(
     df = pd.DataFrame(
         rows,
         columns=[
-            "session_id",
+            "annotation_set_id",
             "subject_id",
-            "session_name",
+            "annotation_set_name",
             "annotation_id",
             "lane",
             "label",
@@ -215,6 +222,7 @@ def export_parquet(
             "source",
             "ghost",
             "confidence",
+            "confidence_type",
             "export_timestamp",
             "rater",
             "human_modified",
@@ -228,9 +236,11 @@ def export_parquet(
     df.to_parquet(output_path, index=False)
 
 
-def bids_session_paths(output_root: Path, session: Session) -> BIDSSessionPaths:
-    """Return canonical BIDS paths for one session."""
-    subject_id = session.subject.id if session.subject is not None else ""
+def bids_session_paths(output_root: Path, context: WorkingContext) -> BIDSSessionPaths:
+    """Return canonical BIDS paths for one context."""
+    subject_id = context.research.participant_id
+    if not subject_id or not context.research.bids_session_id:
+        raise ExportError("Set explicit Participant and BIDS session IDs before BIDS export.")
     return BIDSSessionPaths(
         output_root=Path(output_root),
         subject_label=sanitize_bids_entity_value(
@@ -238,8 +248,8 @@ def bids_session_paths(output_root: Path, session: Session) -> BIDSSessionPaths:
             fallback="unknown",
         ),
         session_label=sanitize_bids_entity_value(
-            _strip_bids_entity_prefix(session.id, "ses"),
-            fallback="session",
+            _strip_bids_entity_prefix(context.research.bids_session_id, "ses"),
+            fallback="context",
         ),
     )
 
@@ -261,12 +271,12 @@ def _strip_bids_entity_prefix(value: str, entity: str) -> str:
 
 def export_bids_events(
     store: AnnotationStore,
-    session: Session,
+    context: WorkingContext,
     output_path: Path,
     include_ghost: bool = False,
 ) -> None:
     """Export annotations as a BIDS-compatible *_events.tsv file."""
-    _require_bids_timing_verified(session)
+    _require_bids_timing_verified(context)
     rows: list[dict[str, object]] = []
     for annotation in _filtered_annotations(store, include_ghost=include_ghost):
         rows.append(
@@ -277,9 +287,10 @@ def export_bids_events(
                 "rime_lane": annotation.lane,
                 "rime_event_type": annotation.event_type,
                 "rime_source": annotation.source,
-                "rime_rater": session.rater or None,
+                "rime_rater": context.annotation_set.rater or None,
                 "rime_human_modified": annotation.human_modified,
                 "rime_confidence": annotation.confidence,
+                "rime_confidence_type": annotation.confidence_type,
                 "rime_origin_onset": _optional_bids_seconds(annotation.origin_start_ms),
                 "rime_origin_offset": _optional_bids_seconds(annotation.origin_end_ms),
                 "rime_origin_confidence": annotation.origin_confidence,
@@ -299,6 +310,7 @@ def export_bids_events(
             "rime_rater",
             "rime_human_modified",
             "rime_confidence",
+            "rime_confidence_type",
             "rime_origin_onset",
             "rime_origin_offset",
             "rime_origin_confidence",
@@ -316,7 +328,7 @@ def export_bids_events_sidecar(output_path: Path) -> None:
     """Write the *_events.json metadata sidecar."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "onset": {"Description": "Event onset in seconds from session start."},
+        "onset": {"Description": "Event onset in seconds from context start."},
         "duration": {"Description": "Event duration in seconds."},
         "trial_type": {
             "Description": "FOG annotation label (e.g. Active Freezing, Festination)."
@@ -348,7 +360,18 @@ def export_bids_events_sidecar(output_path: Path) -> None:
             "Description": "True if boundaries were adjusted after model suggestion."
         },
         "rime_confidence": {
-            "Description": "Model confidence at annotation onset, if model-assisted; n/a otherwise."
+            "Description": (
+                "Numeric annotation confidence. Interpret this value using "
+                "rime_confidence_type."
+            )
+        },
+        "rime_confidence_type": {
+            "Description": "Meaning of rime_confidence.",
+            "Levels": {
+                "human_rating": "Confidence explicitly assigned by a human rater.",
+                "model_probability": "Probability emitted by a computational model.",
+                "not_recorded": "No confidence quantity was recorded for this annotation.",
+            },
         },
         "rime_origin_onset": {
             "Description": (
@@ -408,12 +431,12 @@ def write_bids_dataset_descriptions(output_root: Path) -> int:
     return written
 
 
-def write_bids_participants(output_root: Path, session: Session) -> int:
+def write_bids_participants(output_root: Path, context: WorkingContext) -> int:
     """Write or update participants.tsv and participants.json for the exported subject."""
     output_root = Path(output_root)
-    paths = bids_session_paths(output_root, session)
+    paths = bids_session_paths(output_root, context)
     participant_id = f"sub-{paths.subject_label}"
-    condition = session.subject.condition if session.subject is not None else None
+    condition = context.research.condition or None
 
     frame = pd.DataFrame(
         [{"participant_id": participant_id, "condition": condition}],
@@ -436,7 +459,7 @@ def write_bids_participants(output_root: Path, session: Session) -> int:
             "Description": "Participant identifier of the form sub-<label>."
         },
         "condition": {
-            "Description": "Participant condition or cohort label as stored in the RIME session."
+            "Description": "Participant condition or cohort label as stored in the RIME context."
         },
     }
     paths.participants_json.write_text(json.dumps(participants_json, indent=2), encoding="utf-8")
@@ -444,19 +467,19 @@ def write_bids_participants(output_root: Path, session: Session) -> int:
     return written
 
 
-def build_bids_signal_inputs(session: Session, signals: list[Signal]) -> list[BidsSignalInput]:
+def build_bids_signal_inputs(context: WorkingContext, signals: list[Signal]) -> list[BidsSignalInput]:
     """Pair loaded signals with persisted signal configs for BIDS export."""
     if not signals:
         return []
 
-    matches = _match_signal_configs(session.signals, signals)
+    matches = _match_signal_configs(context.recordings.signals, signals)
     if not matches:
-        raise ExportError("Could not match any loaded signals to session signal configs.")
+        raise ExportError("Could not match any loaded signals to context signal configs.")
     if len(matches) != len(signals):
         matched_names = {id(signal) for _, signal in matches}
         unmatched = [signal.name or "signal" for signal in signals if id(signal) not in matched_names]
         raise ExportError(
-            "Could not match every loaded signal to a session config: " + ", ".join(unmatched)
+            "Could not match every loaded signal to a context config: " + ", ".join(unmatched)
         )
 
     raw_tracksys = [_preferred_tracksys_label(config, signal) for config, signal in matches]
@@ -468,16 +491,16 @@ def build_bids_signal_inputs(session: Session, signals: list[Signal]) -> list[Bi
 
 
 def export_bids_motion(
-    session: Session,
+    context: WorkingContext,
     signal_inputs: list[BidsSignalInput],
     output_root: Path,
 ) -> int:
-    """Export full-session signals as BIDS motion recordings."""
-    _require_bids_timing_verified(session)
+    """Export full-context signals as BIDS motion recordings."""
+    _require_bids_timing_verified(context)
     if not signal_inputs:
         return 0
 
-    paths = bids_session_paths(Path(output_root), session)
+    paths = bids_session_paths(Path(output_root), context)
     file_count = 0
     for item in signal_inputs:
         rows = _motion_channel_rows(item)
@@ -487,6 +510,7 @@ def export_bids_motion(
 
         motion_path = paths.motion_tsv(item.tracksys)
         channels_path = paths.channels_tsv(item.tracksys)
+        channels_sidecar_path = paths.channels_json(item.tracksys)
         sidecar_path = paths.motion_json(item.tracksys)
         motion_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -499,11 +523,15 @@ def export_bids_motion(
             float_format="%.6f",
         )
         export_bids_channels(item, channels_path)
+        channels_sidecar_path.write_text(
+            json.dumps(_channels_sidecar(), indent=2),
+            encoding="utf-8",
+        )
         sidecar_path.write_text(
             json.dumps(_motion_sidecar(item, rows), indent=2),
             encoding="utf-8",
         )
-        file_count += 3
+        file_count += 4
     return file_count
 
 
@@ -512,7 +540,14 @@ def export_bids_channels(item: BidsSignalInput, output_path: Path) -> None:
     rows = _motion_channel_rows(item)
     frame = pd.DataFrame(
         rows,
-        columns=["name", "component", "type", "tracked_point", "units"],
+        columns=[
+            "name",
+            "component",
+            "type",
+            "tracked_point",
+            "units",
+            "reference_frame",
+        ],
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(output_path, sep="\t", index=False, na_rep="n/a")
@@ -520,7 +555,7 @@ def export_bids_channels(item: BidsSignalInput, output_path: Path) -> None:
 
 def export_bids_signal_clips(
     store: AnnotationStore,
-    session: Session,
+    context: WorkingContext,
     signal_inputs: list[BidsSignalInput],
     output_root: Path,
     *,
@@ -529,7 +564,7 @@ def export_bids_signal_clips(
     lanes: list[str] | None = None,
 ) -> int:
     """Export one derivative clips Parquet and JSON sidecar per signal."""
-    _require_bids_timing_verified(session)
+    _require_bids_timing_verified(context)
     annotations = _filtered_annotations(
         store,
         include_ghost=include_ghost,
@@ -539,7 +574,7 @@ def export_bids_signal_clips(
     if not annotations or not signal_inputs:
         return 0
 
-    paths = bids_session_paths(Path(output_root), session)
+    paths = bids_session_paths(Path(output_root), context)
     file_count = 0
     for item in signal_inputs:
         frame = _build_signal_clip_frame(item.signal, annotations, padding_ms=padding_ms)
@@ -563,7 +598,7 @@ def export_bids_signal_clips(
 
 def export_bids_dataset(
     store: AnnotationStore,
-    session: Session,
+    context: WorkingContext,
     signals: list[Signal],
     output_root: Path | str,
     *,
@@ -573,25 +608,25 @@ def export_bids_dataset(
     export_motion: bool = True,
     export_clips: bool = True,
 ) -> int:
-    """Export one session as a BIDS root with optional derivative clips."""
-    _require_bids_timing_verified(session)
+    """Export one context as a BIDS root with optional derivative clips."""
+    _require_bids_timing_verified(context)
     output_root = Path(output_root)
-    paths = bids_session_paths(output_root, session)
+    paths = bids_session_paths(output_root, context)
     file_count = write_bids_dataset_descriptions(output_root)
-    file_count += write_bids_participants(output_root, session)
-    export_bids_events(store, session, paths.events_tsv, include_ghost=include_ghost)
+    file_count += write_bids_participants(output_root, context)
+    export_bids_events(store, context, paths.events_tsv, include_ghost=include_ghost)
     export_bids_events_sidecar(paths.events_json)
     file_count += 2
 
     signal_inputs: list[BidsSignalInput] = []
     if signals and (export_motion or export_clips):
-        signal_inputs = build_bids_signal_inputs(session, signals)
+        signal_inputs = build_bids_signal_inputs(context, signals)
     if export_motion:
-        file_count += export_bids_motion(session, signal_inputs, output_root)
+        file_count += export_bids_motion(context, signal_inputs, output_root)
     if export_clips:
         file_count += export_bids_signal_clips(
             store,
-            session,
+            context,
             signal_inputs,
             output_root,
             padding_ms=padding_ms,
@@ -602,36 +637,11 @@ def export_bids_dataset(
 
 
 def _match_signal_configs(
-    configs: list[SignalConfig],
+    configs: list[SignalSource],
     signals: list[Signal],
-) -> list[tuple[SignalConfig, Signal]]:
-    matched: list[tuple[SignalConfig, Signal]] = []
-    used_signal_indexes: set[int] = set()
-
-    for candidate_names in (
-        lambda config: [config.name] if config.name else [],
-        lambda config: [Path(config.path).stem],
-    ):
-        for config in configs:
-            if any(existing[0] is config for existing in matched):
-                continue
-            names = [name for name in candidate_names(config) if name]
-            for index, signal in enumerate(signals):
-                if index in used_signal_indexes:
-                    continue
-                if signal.name in names:
-                    matched.append((config, signal))
-                    used_signal_indexes.add(index)
-                    break
-
-    remaining_configs = [config for config in configs if not any(existing[0] is config for existing in matched)]
-    remaining_signals = [
-        (index, signal) for index, signal in enumerate(signals) if index not in used_signal_indexes
-    ]
-    if len(remaining_configs) == len(remaining_signals):
-        for config, (_, signal) in zip(remaining_configs, remaining_signals, strict=False):
-            matched.append((config, signal))
-    return matched
+) -> list[tuple[SignalSource, Signal]]:
+    by_id = {source.id: source for source in configs}
+    return [(by_id[signal.source_id], signal) for signal in signals if signal.source_id in by_id]
 
 
 def _unique_bids_labels(values: list[str], *, fallback: str) -> list[str]:
@@ -645,8 +655,8 @@ def _unique_bids_labels(values: list[str], *, fallback: str) -> list[str]:
     return labels
 
 
-def _preferred_tracksys_label(config: SignalConfig, signal: Signal) -> str:
-    candidates = [config.name, Path(config.path).stem, signal.name]
+def _preferred_tracksys_label(config: SignalSource, signal: Signal) -> str:
+    candidates = [config.name, Path(config.file_name).stem, signal.name]
     for candidate in candidates:
         if not candidate:
             continue
@@ -656,7 +666,7 @@ def _preferred_tracksys_label(config: SignalConfig, signal: Signal) -> str:
     for candidate in candidates:
         if candidate and len(candidate.strip()) <= 32:
             return candidate
-    return Path(config.path).stem or signal.name or "signal"
+    return Path(config.file_name).stem or signal.name or "signal"
 
 
 def _motion_channel_rows(item: BidsSignalInput) -> list[dict[str, str]]:
@@ -671,6 +681,7 @@ def _motion_channel_rows(item: BidsSignalInput) -> list[dict[str, str]]:
                 "type": channel_type,
                 "tracked_point": tracked_point,
                 "units": _infer_motion_units(item.config, channel, channel_type),
+                "reference_frame": "source",
             }
         )
     return rows
@@ -687,12 +698,26 @@ def _motion_sidecar(item: BidsSignalInput, rows: list[dict[str, str]]) -> dict[s
 
     payload: dict[str, Any] = {
         "TaskName": _BIDS_TASK_LABEL,
-        "TaskDescription": "Freezing of gait annotation session.",
+        "TaskDescription": "Freezing of gait annotation context.",
         "SamplingFrequency": float(item.signal.sampling_rate_hz),
         "TrackingSystemName": item.config.name or item.tracksys,
         "MotionChannelCount": len(rows),
         "TrackedPointsCount": 1,
         "MissingValues": "n/a",
+        "RIMETimelineRegistration": {
+            "Description": (
+                "RIME extension describing the offset-only transform that registers this "
+                "motion recording to annotation context time."
+            ),
+            "Transform": (
+                "timeline_time_seconds = sample_index / SamplingFrequency "
+                "+ EffectiveOffsetSeconds"
+            ),
+            "EffectiveOffsetSeconds": float(item.signal.offset_ms) / 1_000.0,
+            "SynchronizationMethod": item.config.sync_method or "unspecified",
+            "SourceTimeReference": item.config.time_reference,
+            "SourceTimeUnit": item.config.time_unit,
+        },
     }
     count_field_map = {
         "ACCEL": "ACCELChannelCount",
@@ -710,6 +735,24 @@ def _motion_sidecar(item: BidsSignalInput, rows: list[dict[str, str]]) -> dict[s
         if channel_type in counts:
             payload[field_name] = counts[channel_type]
     return payload
+
+
+def _channels_sidecar() -> dict[str, Any]:
+    """Describe the conservative source-frame label used in *_channels.tsv."""
+    return {
+        "reference_frame": {
+            "Description": "Reference frame in which each motion channel is expressed.",
+            "Levels": {
+                "source": {
+                    "Description": (
+                        "Native coordinate frame supplied by the source recording; its "
+                        "orientation relative to anatomical or global axes is not specified "
+                        "by the RIME context record."
+                    )
+                }
+            },
+        }
+    }
 
 
 def _clips_sidecar(item: BidsSignalInput, *, padding_ms: float) -> dict[str, Any]:
@@ -767,7 +810,7 @@ def _infer_motion_component(channel_name: str) -> str:
     return "x"
 
 
-def _infer_motion_units(config: SignalConfig, channel_name: str, channel_type: str) -> str:
+def _infer_motion_units(config: SignalSource, channel_name: str, channel_type: str) -> str:
     if channel_name in config.units and config.units[channel_name]:
         return config.units[channel_name]
     if channel_type == "ACCEL":
@@ -801,11 +844,11 @@ def _optional_bids_seconds(value_ms: float | int | None) -> float | None:
     return _round_bids_seconds(value_ms)
 
 
-def _require_bids_timing_verified(session: Session) -> None:
-    if session.provenance.recording_relative_timing_verified:
+def _require_bids_timing_verified(context: WorkingContext) -> None:
+    if context.recordings.timeline.recording_relative_timing_verified:
         return
     raise ExportError(
-        "BIDS export requires verified recording-relative annotation timing for this session."
+        "BIDS export requires verified recording-relative annotation timing for this context."
     )
 
 
@@ -873,8 +916,8 @@ def derive_matched_episode_interval(
 
 def export_matched_episode_parquet(
     result: IRRResult,
-    session_a: Session,
-    session_b: Session,
+    context_a: WorkingContext,
+    context_b: WorkingContext,
     output_path: Path | str,
     *,
     lane: str | None = None,
@@ -887,7 +930,7 @@ def export_matched_episode_parquet(
     output.parent.mkdir(parents=True, exist_ok=True)
 
     export_timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    subject_id = session_a.subject.id if session_a.subject is not None else ""
+    subject_id = context_a.research.participant_id
     rows: list[dict[str, object]] = []
 
     for ann_a, ann_b in result.matched_episodes:
@@ -902,16 +945,16 @@ def export_matched_episode_parquet(
                 "source_a_filter": source_a,
                 "source_b_filter": source_b,
                 "matched_episode_mode": mode,
-                "session_a_id": session_a.id,
-                "session_a_name": session_a.name,
+                "annotation_set_a_id": context_a.annotation_set.id,
+                "annotation_set_a_name": context_a.annotation_set.name,
                 "annotation_a_id": ann_a.id,
-                "rater_a": session_a.rater,
+                "rater_a": context_a.annotation_set.rater,
                 "rater_a_start_ms": ann_a.start_ms,
                 "rater_a_end_ms": ann_a.end_ms,
-                "session_b_id": session_b.id,
-                "session_b_name": session_b.name,
+                "annotation_set_b_id": context_b.annotation_set.id,
+                "annotation_set_b_name": context_b.annotation_set.name,
                 "annotation_b_id": ann_b.id,
-                "rater_b": session_b.rater,
+                "rater_b": context_b.annotation_set.rater,
                 "rater_b_start_ms": ann_b.start_ms,
                 "rater_b_end_ms": ann_b.end_ms,
                 "lane": ann_a.lane,
@@ -941,14 +984,14 @@ def export_matched_episode_parquet(
             "source_a_filter",
             "source_b_filter",
             "matched_episode_mode",
-            "session_a_id",
-            "session_a_name",
+            "annotation_set_a_id",
+            "annotation_set_a_name",
             "annotation_a_id",
             "rater_a",
             "rater_a_start_ms",
             "rater_a_end_ms",
-            "session_b_id",
-            "session_b_name",
+            "annotation_set_b_id",
+            "annotation_set_b_name",
             "annotation_b_id",
             "rater_b",
             "rater_b_start_ms",
@@ -971,7 +1014,7 @@ def export_matched_episode_parquet(
 
 def export_signal_clips(
     store: AnnotationStore,
-    session: Session,
+    context: WorkingContext,
     signals: list[Signal],
     output_dir: Path | str,
     *,
@@ -981,7 +1024,7 @@ def export_signal_clips(
     rows_per_file: int = 1_000_000,
 ) -> int:
     """Export windowed signal clips aligned to annotation onset."""
-    del session  # reserved for future metadata-driven naming
+    del context  # reserved for future metadata-driven naming
     output_root = Path(output_dir)
     annotations = _filtered_annotations(
         store,
@@ -1019,7 +1062,7 @@ def export_signal_clips(
 
 def export_video_clips(
     store: AnnotationStore,
-    session: Session,
+    context: WorkingContext,
     output_dir: Path | str,
     *,
     padding_ms: float = 500.0,
@@ -1041,7 +1084,7 @@ def export_video_clips(
     if not annotations:
         return 0
 
-    videos = _resolve_export_videos(session, video_role)
+    videos = _resolve_export_videos(context, video_role)
     if not videos:
         return 0
 
@@ -1050,7 +1093,9 @@ def export_video_clips(
 
     file_count = 0
     for video in videos:
-        video_path = session.get_video_path(video)
+        video_path = context.workspace.source_path(video.id)
+        if video_path is None or not video_path.is_file():
+            raise ExportError(f"Recording unavailable: {video.file_name}")
         for annotation in annotations:
             start_s = max(0.0, (annotation.start_ms - padding_ms - video.offset_ms) / 1000.0)
             end_s = (annotation.end_ms + padding_ms - video.offset_ms) / 1000.0
@@ -1089,26 +1134,26 @@ def export_video_clips(
     return file_count
 
 
-def export_session_report(
+def export_workspace_report(
     store: AnnotationStore,
-    session: Session,
+    context: WorkingContext,
     output_path: Path | str,
     *,
     duration_ms: float,
 ) -> None:
-    """Export a TSV session report with annotation summary and clinical metrics."""
+    """Export a TSV context report with annotation summary and clinical metrics."""
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     generated = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    subject_id = session.subject.id if session.subject is not None else ""
-    condition = session.subject.condition if session.subject is not None else ""
+    subject_id = context.research.participant_id
+    condition = context.research.condition
     duration_text = _format_duration(duration_ms)
 
     lines = [
-        "# RIME Session Report",
-        f"# Session:\t{session.name}",
-        f"# Rater:\t{session.rater}",
+        "# RIME Workspace Report",
+        f"# Annotation set:\t{context.annotation_set.name}",
+        f"# Rater:\t{context.annotation_set.rater}",
         f"# Subject:\t{subject_id}",
         f"# Condition:\t{condition}",
         f"# Duration:\t{duration_text} ({duration_ms:,.0f} ms)",
@@ -1127,18 +1172,18 @@ def export_session_report(
         ]
     )
 
-    for metric in session.clinical_metrics:
+    for metric in context.calculation_templates:
         numerator_specs = [CoverageSpec(**spec) for spec in metric.numerator]
         denominator_specs = (
             None
-            if metric.denominator_type == "session"
+            if metric.denominator_type == "timeline"
             else [CoverageSpec(**spec) for spec in metric.denominator]
         )
         result = compute_coverage(
             store,
             numerator_specs,
             denominator=denominator_specs,
-            session_duration_ms=duration_ms,
+            timeline_duration_ms=duration_ms,
         )
         denominator_episodes = (
             "—" if result.denominator_episodes < 0 else str(result.denominator_episodes)
@@ -1162,8 +1207,8 @@ def export_session_report(
 
 def export_irr_report(
     result: IRRResult,
-    session_a: Session,
-    session_b: Session,
+    context_a: WorkingContext,
+    context_b: WorkingContext,
     output_path: Path | str,
     *,
     lane: str | None = None,
@@ -1176,8 +1221,8 @@ def export_irr_report(
 
     generated = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     lane_text = lane if lane is not None else "(all lanes)"
-    rater_a = session_a.rater or "(no rater)"
-    rater_b = session_b.rater or "(no rater)"
+    rater_a = context_a.annotation_set.rater or "(no rater)"
+    rater_b = context_b.annotation_set.rater or "(no rater)"
     n_matched = len(result.matched_episodes)
     n_unmatched_a = len(result.unmatched_a)
     n_unmatched_b = len(result.unmatched_b)
@@ -1187,8 +1232,8 @@ def export_irr_report(
     match_rate = n_matched / denom if denom > 0 else float("nan")
     lines = [
         "# RIME IRR Report",
-        f"# Session A:\t{session_a.name}  (Rater: {rater_a})",
-        f"# Session B:\t{session_b.name}  (Rater: {rater_b})",
+        f"# Annotation set A:\t{context_a.annotation_set.name}  (Rater: {rater_a})",
+        f"# Annotation set B:\t{context_b.annotation_set.name}  (Rater: {rater_b})",
         f"# Lane:\t{lane_text}",
         f"# Source A:\t{source_a or '(all accepted sources)'}",
         f"# Source B:\t{source_b or '(all accepted sources)'}",
@@ -1276,11 +1321,11 @@ def _format_duration(duration_ms: float) -> str:
     return f"{minutes}m {seconds:02d}s"
 
 
-def _resolve_export_videos(session: Session, video_role: str):
+def _resolve_export_videos(context: WorkingContext, video_role: str):
     if video_role == "primary":
-        return [video for video in session.videos if video.path == session.primary_video][:1]
+        return [video for video in context.recordings.videos if video.role == "primary"][:1]
     if video_role == "all":
-        return list(session.videos)
+        return list(context.recordings.videos)
     raise ExportError(f"Unsupported video export role '{video_role}'")
 
 

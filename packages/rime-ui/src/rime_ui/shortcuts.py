@@ -14,7 +14,7 @@ SECTION_PLAYBACK = "Playback"
 SECTION_ANNOTATION = "Annotation Editing"
 SECTION_TIMELINE = "Timeline Selection"
 SECTION_LAYOUT = "Panels And Layout"
-SECTION_SESSION = "Session And Models"
+SECTION_WORKSPACE = "Workspace And Models"
 SECTION_HELP = "Help"
 
 SECTION_ORDER = (
@@ -22,7 +22,7 @@ SECTION_ORDER = (
     SECTION_ANNOTATION,
     SECTION_TIMELINE,
     SECTION_LAYOUT,
-    SECTION_SESSION,
+    SECTION_WORKSPACE,
     SECTION_HELP,
 )
 
@@ -49,11 +49,11 @@ TOGGLE_MODEL_RUNNER = "toggle_model_runner"
 TOGGLE_MODEL_EVALUATION = "toggle_model_evaluation"
 TOGGLE_CLINICAL_OUTCOMES = "toggle_clinical_outcomes"
 TOGGLE_IRR_PANEL = "toggle_irr_panel"
-NEW_SESSION = "new_session"
-OPEN_SESSION = "open_session"
-IMPORT_SESSION = "import_session"
+NEW_WORKSPACE = "new_workspace"
+OPEN_WORKSPACE = "open_workspace"
+IMPORT_EAF = "import_eaf"
 SAVE_ANNOTATIONS = "save_annotations"
-COMPARE_SESSION = "compare_session"
+COMPARE_WORKSPACE = "compare_workspace"
 LOAD_MODEL = "load_model"
 RUN_INFERENCE = "run_inference"
 CLEAR_SNAPS = "clear_snaps"
@@ -233,42 +233,42 @@ SHORTCUT_BINDINGS: tuple[ShortcutBinding, ...] = (
         SECTION_LAYOUT,
         "F9",
     ),
-    ShortcutBinding(NEW_SESSION, "New session", "Create a new session", SECTION_SESSION, "Ctrl+N"),
-    ShortcutBinding(OPEN_SESSION, "Open session", "Open an existing session", SECTION_SESSION, "Ctrl+O"),
+    ShortcutBinding(NEW_WORKSPACE, "New workspace", "Create a new workspace", SECTION_WORKSPACE, "Ctrl+N"),
+    ShortcutBinding(OPEN_WORKSPACE, "Open workspace", "Open an existing workspace", SECTION_WORKSPACE, "Ctrl+O"),
     ShortcutBinding(
-        IMPORT_SESSION,
+        IMPORT_EAF,
         "Import from ELAN",
-        "Import a session from ELAN",
-        SECTION_SESSION,
+        "Import annotations from ELAN",
+        SECTION_WORKSPACE,
         "Ctrl+I",
     ),
     ShortcutBinding(
         SAVE_ANNOTATIONS,
-        "Save annotations",
-        "Save annotations",
-        SECTION_SESSION,
+        "Save workspace",
+        "Save workspace",
+        SECTION_WORKSPACE,
         "Ctrl+S",
     ),
     ShortcutBinding(
-        COMPARE_SESSION,
-        "Compare session",
-        "Open a comparison session",
-        SECTION_SESSION,
+        COMPARE_WORKSPACE,
+        "Compare annotation workspace",
+        "Open a comparison workspace",
+        SECTION_WORKSPACE,
         "Ctrl+2",
     ),
-    ShortcutBinding(LOAD_MODEL, "Load model", "Load a model package", SECTION_SESSION, "Ctrl+M"),
+    ShortcutBinding(LOAD_MODEL, "Load model", "Load a model package", SECTION_WORKSPACE, "Ctrl+M"),
     ShortcutBinding(
         RUN_INFERENCE,
         "Run inference",
         "Run inference with the active model",
-        SECTION_SESSION,
+        SECTION_WORKSPACE,
         "Ctrl+R",
     ),
     ShortcutBinding(
         CLEAR_SNAPS,
         "Clear all snap points",
         "Clear all snap points",
-        SECTION_SESSION,
+        SECTION_WORKSPACE,
         "Ctrl+Shift+M",
     ),
     ShortcutBinding(

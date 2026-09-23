@@ -1,54 +1,18 @@
-# Annotation Workflow
+# Annotate
 
-The core annotation loop in RIME: watch, mark, review.
-
-## Overview
-
-```mermaid
-flowchart LR
-    A[Play video] --> B[Identify event]
-    B --> C[Mark start / end on timeline]
-    C --> D[Assign label]
-    D --> E{Rule check}
-    E -- violation --> F[Review violation]
-    E -- ok --> G[Continue]
-    F --> G
-    G --> A
-```
-
-## Marking an annotation
-
-1. Play the video and locate the event of interest
-2. Press **`[`** at the event start and **`]`** at the event end
-   *(or click-drag directly on the timeline lane)*
-3. The label dialog opens — select the appropriate label
-4. Press **Enter** to confirm
-
-
-## Editing an existing annotation
-
-- **Click** an annotation on the timeline to select it
-- **Drag the edges** to adjust start / end time
-- **Double-click** to re-open the label dialog
-- **Delete** key to remove the selected annotation
-
-## Navigating annotations
-
-- The **Annotation List** panel (right sidebar) shows all annotations
-- Click any row to jump to that annotation in the timeline
-- Filter by lane or label using the search bar at the top of the list
-
-
-## Keyboard shortcuts
-
-| Action | Shortcut |
+| Section | Controls |
 |---|---|
-| Play / Pause | `Space` |
-| Mark start | `[` |
-| Mark end | `]` |
-| Delete selected | `Delete` |
-| Next annotation | `Tab` |
-| Previous annotation | `Shift+Tab` |
+| Recordings & signals | **Play** / **Space**, playback speed, **View** for channels/layout, **Alignment…** for offsets and notes |
+| Annotations | **Playback** ruler to seek/scrub; **Zoom** handles to resize the visible range; **Fit** to show the full recording |
+| Measurements | Live results, **Configure…**, **Save records…** |
 
-!!! tip
-    Keyboard shortcuts are customisable via **Preferences → Shortcuts**.
+Use **Add interval…** (or **Add annotation…**) to choose a lane, label and boundaries.
+You can also drag across an empty interval lane. Select an annotation to **Edit**,
+**Cut** or **Delete** it; drag its edges to adjust boundaries.
+
+**Magnet** controls snapping. **Tools** contains snap points and looping.
+**Edit → Undo / Redo** reverses edits. Model and protocol suggestions remain pending
+until accepted, modified or rejected; pending items do not contribute to results.
+
+Use **File → Save workspace** to persist work. **Save records…** separately captures
+measurements in a `.rime` document. See [measurements](../clinical-analysis/clinical-metrics.md).

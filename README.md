@@ -1,9 +1,9 @@
 # RIME
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19804971.svg)](https://doi.org/10.5281/zenodo.19804971)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19804970.svg)](https://doi.org/10.5281/zenodo.19804970)
 [![PyPI](https://img.shields.io/pypi/v/neurocog-rime-core)](https://pypi.org/project/neurocog-rime-core/)
 
-RIME is a multimodal annotation toolkit for Parkinson's disease research. It combines a headless core package for sessions, schemas, annotation logic, import/export, and model orchestration with a Qt desktop application for interactive review and labeling.
+RIME (Reproducible Interval-derived Measurement Exchange) represents measurements and their derivations. Its reference application supports multimodal annotation, review, and inspection/comparison of `.rime` records. The headless core implements the record contract and calculations.
 
 ## Install
 
@@ -34,21 +34,26 @@ rime
 python -m rime_ui
 ```
 
-Open a session directly:
+On the v0.2 development branch, open a workspace directly:
 
 ```bash
-rime --open /path/to/session.json
-rime --open /path/to/session.json --compare /path/to/comparison_session.json
-rime --open /path/to/session.json --model /path/to/model.rime
+rime --open /path/to/workspace.json
 ```
 
 ## Quick Start
 
 1. Install both packages.
 2. Launch `rime`.
-3. Create or open a session.
+3. Use **File → New workspace** or open `workspace.json`.
 4. Load a protocol schema and media/signals as needed.
-5. Annotate in the UI, review pending ghost annotations, and export reports or datasets.
+5. Annotate, review suggestions or rater inputs, and save immutable `.rime` measurement records.
+
+The v0.2 desktop uses native annotation and review workspaces and an independent
+record inspector. See the [compact synthetic workflows](examples/workflows/README.md)
+for launch commands and manual checks. Software tests do not require research data.
+
+Local research/manuscript work and real-data demos are excluded from the software
+repository; public examples use synthetic evidence.
 
 ## Core Package Overview
 
@@ -58,16 +63,20 @@ rime --open /path/to/session.json --model /path/to/model.rime
 - `rime_core.analysis`: coverage, IRR, evaluation
 - `rime_core.io`: import/export and signal-loading helpers
 - `rime_core.modeling`: CMF package loading and inference
-- `rime_core.sessions`: session models and persistence
+- `rime_core.records`: annotation sets, source descriptions, timelines, and research context
 - `rime_core.workspace`: live working-session orchestration
 
 ## Development
 
-Run the test suite from the repo root:
+Run the test suite from the repo root (install `pytest` in the environment first):
 
 ```bash
-.venv/bin/pytest
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest
 ```
+
+For release checks, install the built wheels in a fresh environment and set
+`RIME_TEST_INSTALLED=1` when running the suite; this prevents the test setup from
+substituting checkout sources for installed packages.
 
 Build docs locally:
 
@@ -88,7 +97,7 @@ If you use RIME in your research, please cite:
   author    = {Zafar, Abdullah and Casagrande Pinto, Arthur Eduardo and Homagain, Abhishesh and Howe, Erika and Ehgoetz Martens, Kaylena},
   title     = {RIME: Open-source multimodal signal annotation, modeling, and benchmarking for Parkinson's research},
   year      = {2026},
-  doi       = {10.5281/zenodo.19804971},
-  url       = {https://doi.org/10.5281/zenodo.19804971}
+  doi       = {10.5281/zenodo.19804970},
+  url       = {https://doi.org/10.5281/zenodo.19804970}
 }
 ```

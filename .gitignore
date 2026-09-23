@@ -1,17 +1,18 @@
-# macOS
+# OS and local editor state
 .DS_Store
+/.vscode/
+/.idea/
 
-# Python bytecode and caches
+# Python environments and caches
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Virtual environments
 .venv/
 venv/
+.env
 .env/
-
-# Test, lint, and tool caches
+.env.*
+/uv.lock
 .cache/
 .matplotlib-cache/
 .pytest_cache/
@@ -20,16 +21,17 @@ venv/
 .coverage
 .coverage.*
 htmlcov/
+.ipynb_checkpoints/
 
-# Build artifacts
+# Generated distributions and documentation
 build/
 dist/
-notes/
-sample-data/
-manuscript/
-scripts/
-/src/
 *.egg-info/
+/site/
 
-# Notebooks
-.ipynb_checkpoints/
+# Local
+/notes/
+/development.md
+/manuscript/
+/examples/workflows/real-data/
+/models/archive/

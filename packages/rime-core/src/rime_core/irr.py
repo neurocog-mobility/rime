@@ -260,6 +260,9 @@ def _cohens_kappa(states_a: list[str], states_b: list[str]) -> float:
         return float("nan")
 
     categories = sorted(set(states_a) | set(states_b))
+    if len(categories) < 2:
+        return float("nan")
+
     total = len(states_a)
     observed = _percent_agreement(states_a, states_b)
     probs_a = {category: 0.0 for category in categories}
@@ -269,8 +272,6 @@ def _cohens_kappa(states_a: list[str], states_b: list[str]) -> float:
     for state in states_b:
         probs_b[state] += 1.0 / total
     expected = sum(probs_a[category] * probs_b[category] for category in categories)
-    if expected >= 1.0:
-        return 1.0 if observed >= 1.0 else 0.0
     return (observed - expected) / (1.0 - expected)
 
 

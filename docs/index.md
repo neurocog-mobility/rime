@@ -1,54 +1,57 @@
 ---
 template: home.html
+hide:
+  - navigation
+  - toc
 ---
 
-![RIME UI](assets/static/index.png)
+<div class="rime-home" markdown>
 
----
+## From recordings to reproducible measurements
 
-## What RIME does
+RIME specifies how to represent an interval-derived measurement and its derivation.
+The reference application supports annotation, review, and inspection of those records.
 
-<div class="grid cards" markdown>
+[Create a workspace](getting-started/first-session.md) · [Try examples](examples.md) · [Read the specification](measurement-records/rime-specification.md)
 
--   :material-video-box: **Synchronized review**
+<div class="rime-workflows" markdown>
 
-    ---
+<div class="rime-workflow" markdown>
 
-    Multi-view video and physiological signals on a single timeline. Annotations link directly to signal traces.
+### Annotate
 
--   :material-format-list-checks: **Structured annotation**
+Inspect recordings and signals, mark intervals, and save measurements.
 
-    ---
+[![Annotation workspace](assets/screens/screen-annotate.png){ loading=lazy }](assets/screens/screen-annotate.png)
 
-    Protocol schemas define lanes, labels, and hierarchy. Rules enforce consistency automatically as you annotate.
-
--   :material-robot-outline: **Model integration**
-
-    ---
-
-    Load, run, and benchmark detection models directly in the annotation environment using the Common Model Format (CMF).
-
--   :material-chart-bar: **Clinical outcomes**
-
-    ---
-
-    Compute %TF, IRR, and other clinical metrics without leaving the tool. Export session reports, Parquet files, or full BIDS datasets.
+[Annotation guide →](annotation/workflow.md)
 
 </div>
 
----
+<div class="rime-workflow" markdown>
 
-## Who is RIME for?
+### Review
 
-<div class="borderless-table" markdown>
+Compare input annotations and retain explicit reviewer decisions.
 
-| If you are… | Start here |
-|---|---|
-| New to RIME | [Installation](getting-started/installation.md) → [Your First Session](getting-started/first-session.md) |
-| Setting up a new study | [Protocol & Schema](study-setup/protocol-schema.md) |
-| An annotator | [Annotation Workflow](annotation/workflow.md) |
-| Building a detection model | [What is CMF?](models/what-is-cmf.md) |
-| Importing existing ELAN data | [Importing from ELAN](getting-started/import-from-elan.md) |
+[![Review workspace](assets/screens/screen-review.png){ loading=lazy }](assets/screens/screen-review.png)
+
+[Review guide →](quality-assurance/review-layers.md)
 
 </div>
 
+<div class="rime-workflow" markdown>
+
+### Inspect and compare
+
+Verify calculations and compare the derivations of saved `.rime` records.
+
+[![Record comparison](assets/screens/screen-record.png){ loading=lazy }](assets/screens/screen-record.png)
+
+[Measurement guide →](clinical-analysis/clinical-metrics.md)
+
+</div>
+
+</div>
+
+</div>

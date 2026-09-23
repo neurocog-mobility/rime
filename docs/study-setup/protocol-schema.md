@@ -1,37 +1,61 @@
-# Protocol & Schema
+# Clinical protocol
 
-The schema defines the annotation structure for your study — which lanes exist, what labels are valid, and what rules govern annotation behaviour. It is configured once per study and shared across all sessions.
+The protocol JSON defines a study's annotation lanes, labels, relationships and rules, and
+its available measurement outcomes. It is shared across workspaces and retained with each
+annotation set. No separate outcome file is needed.
 
-## What the schema controls
+## What it controls
 
-- **Annotation lanes** — the horizontal rows on the timeline (e.g. FOG, Gait Phase, Context)
-- **Labels** — valid label values within each lane
-- **Hierarchy** — L1–L5 nesting relationships between lanes
-- **Rules** — automatic side-effects and violation checks (see [Rules & Violations](../annotation/rules-and-violations.md))
+- Annotation lanes and labels on the timeline.
+- Hierarchy, automatic effects and violation checks.
+- Named outcomes: their calculation, event selection and optional eligible-time selection.
 
-## Viewing the schema
+Load a protocol JSON during workspace setup. Click a measurement value in the
+workspace to inspect its calculation and contributing annotations.
 
-**View → Schema Browser** opens the schema inspector.
-
-## Schema file format
+## Minimal example
 
 ```json
 {
+  "name": "Walking study",
+  "version": "1",
   "lanes": [
-    {
-      "id": "fog",
-      "label": "FOG",
-      "level": 1,
-      "labels": ["FOG", "Trembling-in-Place", "Akinesia"]
-    }
+    {"name": "Tasks", "level": 1, "color": "#4a90a4", "labels": ["Walk"], "allow_overlap": false},
+    {"name": "FOG", "level": 2, "color": "#d36161", "labels": ["FOG"], "allow_overlap": false}
   ],
-  "rules": []
+  "groups": [],
+  "rules": [],
+  "measurements": [
+    {
+      "id": "fog_count",
+      "name": "FOG episode count",
+      "version": "1",
+      "calculation": "count",
+      "calculation_version": "1",
+      "events": {"lane": "FOG", "label": "FOG"},
+      "scope": {"lane": "Tasks", "label": "Walk"}
+    }
+  ]
 }
 ```
 
-## Creating a schema for a new study
+The implemented calculations are `covered_duration`, `percentage_coverage`, and `count`.
+`label: null` selects all labels in a lane. `scope: null` uses the entire observation period. Outcome IDs must be unique within the protocol, selectors must name existing
+lanes, and duration/percentage and scope selections require interval lanes. Count can also
+select point lanes. An omitted or empty `measurements` array leaves annotation work available
+without adding implicit outcomes.
 
-Place the schema JSON file anywhere accessible on disk. Reference it in the Session Wizard when creating a session — RIME stores the path in `session.json`. The bundled GP-FOG schema (`gpfog_schema.json`) serves as a complete working example.
+Outcome `version` identifies the study's definition; `calculation_version` identifies the
+backend arithmetic contract. Both default to `"1"`. The calculation returns its own unit;
+protocol authors do not supply a unit or executable formula. Update the outcome version when
+changing its meaning or selections. Saved records retain their effective definitions.
 
-!!! note
-    Schema design decisions affect all downstream analysis. Align on label definitions with all annotators before beginning data collection.
+## Use a study protocol
+
+Select a JSON file in the Workspace Wizard. RIME retains its contents with the annotation set,
+so reopening does not require the original file. The bundled `gpfog_schema.json` is a complete
+working example with all three outcomes. Agree on annotation meanings with the study team;
+for an episode count, one retained annotation must represent one episode.
+
+See [measurement semantics](../measurement-records/specification.md) and
+[rules and violations](../annotation/rules-and-violations.md).

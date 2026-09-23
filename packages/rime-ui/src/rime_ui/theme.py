@@ -84,6 +84,36 @@ SIGNAL_PLOT_COLORS = (
 )
 
 
+def native_surface_color(widget, fallback):
+    """Opt-in palette colors for custom-painted surfaces during the UI pilot."""
+    if not getattr(widget, "native_palette", False):
+        return fallback
+    from PySide6.QtGui import QColor, QPalette
+
+    if fallback == COLOR_TIMELINE_ROW_BG:
+        base = widget.palette().color(QPalette.ColorRole.Base)
+        text = widget.palette().color(QPalette.ColorRole.Text)
+        return QColor(
+            *[
+                round(0.94 * background + 0.06 * foreground)
+                for background, foreground in zip(base.getRgb()[:3], text.getRgb()[:3])
+            ]
+        ).name()
+
+    roles = {
+        COLOR_WINDOW_BG: QPalette.ColorRole.Window,
+        COLOR_WINDOW_ALT_BG: QPalette.ColorRole.Base,
+        COLOR_TIMELINE_ROW_BG: QPalette.ColorRole.AlternateBase,
+        COLOR_BORDER: QPalette.ColorRole.Mid,
+        COLOR_TEXT: QPalette.ColorRole.Text,
+        COLOR_TEXT_STRONG: QPalette.ColorRole.Text,
+        COLOR_TEXT_EMPHASIS: QPalette.ColorRole.Text,
+        COLOR_TEXT_SUBTLE: QPalette.ColorRole.Text,
+    }
+    role = roles.get(fallback)
+    return widget.palette().color(role).name() if role is not None else fallback
+
+
 def set_layout_metrics(
     layout, *, margins: int | Sequence[int] = SPACE_MD, spacing: int = SPACE_MD
 ) -> None:
@@ -109,9 +139,7 @@ def muted_text_stylesheet(*, color: str = COLOR_TEXT_MUTED, extra: str = "") -> 
     return " ".join(rules)
 
 
-def emphasis_text_stylesheet(
-    *, color: str = COLOR_TEXT_EMPHASIS, weight: int = 600
-) -> str:
+def emphasis_text_stylesheet(*, color: str = COLOR_TEXT_EMPHASIS, weight: int = 600) -> str:
     return f"font-weight: {weight}; color: {color};"
 
 
@@ -288,9 +316,7 @@ def video_overlay_label_stylesheet() -> str:
 
 def splitter_handle_stylesheet(*, width: int = 3) -> str:
     """Minimal splitter handle styling."""
-    return (
-        f"QSplitter::handle {{ background-color: {COLOR_BORDER}; width: {width}px; }}"
-    )
+    return f"QSplitter::handle {{ background-color: {COLOR_BORDER}; width: {width}px; }}"
 
 
 def label_dialog_stylesheet() -> str:

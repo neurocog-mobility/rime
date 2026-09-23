@@ -1,7 +1,6 @@
 from __future__ import annotations
-
+from math import isnan
 import pytest
-
 from rime_core import Annotation, AnnotationStore, compute_irr
 
 
@@ -13,15 +12,9 @@ def _store(*annotations: Annotation) -> AnnotationStore:
 
 
 def test_compute_irr_reports_perfect_agreement_for_identical_intervals() -> None:
-    store_a = _store(
-        Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0),
-    )
-    store_b = _store(
-        Annotation(id="b1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0),
-    )
-
+    store_a = _store(Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0))
+    store_b = _store(Annotation(id="b1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0))
     result = compute_irr(store_a, store_b, 1000.0, lane="FOG", frame_resolution_ms=100.0)
-
     assert result.cohens_kappa == pytest.approx(1.0)
     assert result.set_iou == pytest.approx(1.0)
     assert len(result.matched_episodes) == 1
@@ -29,6 +22,31 @@ def test_compute_irr_reports_perfect_agreement_for_identical_intervals() -> None
     assert not result.unmatched_b
     assert result.per_label["FOG"].matched == 1
     assert result.per_label["FOG"].set_iou == pytest.approx(1.0)
+    assert result.per_label["FOG"].cohens_kappa == pytest.approx(1.0)
+
+
+def test_compute_irr_reports_undefined_kappa_when_both_raters_mark_no_events() -> None:
+    result = compute_irr(_store(), _store(), 1000.0, lane="FOG", frame_resolution_ms=100.0)
+    assert isnan(result.cohens_kappa)
+    assert isnan(result.set_iou)
+    assert result.per_label == {}
+
+
+def test_compute_irr_reports_negative_kappa_for_disjoint_events() -> None:
+    store_a = _store(Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=200.0))
+    store_b = _store(Annotation(id="b1", lane="FOG", label="FOG", start_ms=800.0, end_ms=900.0))
+    result = compute_irr(store_a, store_b, 1000.0, lane="FOG", frame_resolution_ms=100.0)
+    assert result.cohens_kappa == pytest.approx(-1.0 / 9.0)
+    assert result.per_label["FOG"].cohens_kappa == pytest.approx(-1.0 / 9.0)
+    assert result.set_iou == 0.0
+
+
+def test_compute_irr_keeps_rare_event_kappa_defined() -> None:
+    store_a = _store(Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=200.0))
+    result = compute_irr(store_a, _store(), 1000.0, lane="FOG", frame_resolution_ms=100.0)
+    assert result.cohens_kappa == pytest.approx(0.0)
+    assert result.per_label["FOG"].cohens_kappa == pytest.approx(0.0)
+    assert result.set_iou == 0.0
 
 
 def test_compute_irr_tracks_unmatched_annotations_and_label_breakdown() -> None:
@@ -36,12 +54,8 @@ def test_compute_irr_tracks_unmatched_annotations_and_label_breakdown() -> None:
         Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0),
         Annotation(id="a2", lane="FOG", label="FOG", start_ms=500.0, end_ms=700.0),
     )
-    store_b = _store(
-        Annotation(id="b1", lane="FOG", label="FOG", start_ms=120.0, end_ms=280.0),
-    )
-
+    store_b = _store(Annotation(id="b1", lane="FOG", label="FOG", start_ms=120.0, end_ms=280.0))
     result = compute_irr(store_a, store_b, 1000.0, lane="FOG", frame_resolution_ms=100.0)
-
     assert len(result.matched_episodes) == 1
     assert [annotation.id for annotation in result.unmatched_a] == ["a2"]
     assert not result.unmatched_b
@@ -53,12 +67,10 @@ def test_compute_irr_tracks_unmatched_annotations_and_label_breakdown() -> None:
 
 def test_compute_irr_excludes_ghost_annotations() -> None:
     store_a = _store(
-        Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0, ghost=True),
+        Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0, ghost=True)
     )
     store_b = _store()
-
     result = compute_irr(store_a, store_b, 1000.0, lane="FOG")
-
     assert result.matched_episodes == []
     assert result.unmatched_a == []
     assert result.unmatched_b == []
@@ -66,15 +78,9 @@ def test_compute_irr_excludes_ghost_annotations() -> None:
 
 
 def test_compute_irr_uses_lane_and_label_for_all_lane_matching() -> None:
-    store_a = _store(
-        Annotation(id="a1", lane="Tasks", label="Walk", start_ms=0.0, end_ms=500.0),
-    )
-    store_b = _store(
-        Annotation(id="b1", lane="FOG", label="Walk", start_ms=0.0, end_ms=500.0),
-    )
-
+    store_a = _store(Annotation(id="a1", lane="Tasks", label="Walk", start_ms=0.0, end_ms=500.0))
+    store_b = _store(Annotation(id="b1", lane="FOG", label="Walk", start_ms=0.0, end_ms=500.0))
     result = compute_irr(store_a, store_b, 1000.0, lane=None, frame_resolution_ms=100.0)
-
     assert result.matched_episodes == []
     assert [annotation.id for annotation in result.unmatched_a] == ["a1"]
     assert [annotation.id for annotation in result.unmatched_b] == ["b1"]
@@ -83,13 +89,16 @@ def test_compute_irr_uses_lane_and_label_for_all_lane_matching() -> None:
 def test_compute_irr_can_filter_each_session_by_source() -> None:
     store_a = _store(
         Annotation(id="a1", lane="FOG", label="FOG", start_ms=100.0, end_ms=300.0, source="manual"),
-        Annotation(id="a2", lane="FOG", label="FOG", start_ms=500.0, end_ms=700.0, source="model:demo"),
+        Annotation(
+            id="a2", lane="FOG", label="FOG", start_ms=500.0, end_ms=700.0, source="model:demo"
+        ),
     )
     store_b = _store(
         Annotation(id="b1", lane="FOG", label="FOG", start_ms=110.0, end_ms=290.0, source="manual"),
-        Annotation(id="b2", lane="FOG", label="FOG", start_ms=520.0, end_ms=680.0, source="model:demo"),
+        Annotation(
+            id="b2", lane="FOG", label="FOG", start_ms=520.0, end_ms=680.0, source="model:demo"
+        ),
     )
-
     result = compute_irr(
         store_a,
         store_b,
@@ -99,7 +108,6 @@ def test_compute_irr_can_filter_each_session_by_source() -> None:
         source_b="manual",
         frame_resolution_ms=100.0,
     )
-
     assert len(result.matched_episodes) == 1
     assert not result.unmatched_a
     assert not result.unmatched_b

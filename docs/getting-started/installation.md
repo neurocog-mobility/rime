@@ -1,42 +1,25 @@
 # Installation
 
-## Requirements
+These guides describe the v0.2 development application. To use the current checkout,
+install from the repository root with Python 3.10 or later:
 
-- Python 3.10 or later
-- A virtual environment manager (recommended: `venv` or `conda`)
-
-## Install
-
-```bash
-# Create and activate a virtual environment
+```sh
 python -m venv .venv
-source .venv/bin/activate        # macOS / Linux
-# .venv\Scripts\activate         # Windows
-
-# Install RIME
-pip install neurocog-rime-core neurocog-rime-ui
-```
-
-## Launch
-
-```bash
+source .venv/bin/activate
+# Windows: .venv\Scripts\activate
+pip install -e packages/rime-core -e packages/rime-ui
 rime
 ```
 
-To open a specific session directly:
+For the published packages, use `pip install neurocog-rime-core neurocog-rime-ui`;
+the published release may differ from this development guide.
 
-```bash
-rime --open path/to/session.json
+Open a workspace or measurement document directly:
+
+```sh
+rime --open /path/to/workspace.json
+rime --open /path/to/measurements.rime
 ```
 
-## Install from source
-
-```bash
-pip install "neurocog-rime-core @ git+https://github.com/neurocog-mobility/rime.git#subdirectory=packages/rime-core"
-pip install "neurocog-rime-ui @ git+https://github.com/neurocog-mobility/rime.git#subdirectory=packages/rime-ui"
-rime
-```
-
-## Verify installation
-
-If RIME launches and shows an empty main window, installation is successful.
+`python -m rime_ui` is an alternative launcher. Start with
+[your first workspace](first-session.md) or the [examples](../examples.md).

@@ -1,8 +1,10 @@
-"""Stable core-facing API for one loaded working session."""
+"""Application operations on native scientific objects and a local workspace."""
 
 from __future__ import annotations
 
+import copy
 import logging
+import math
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -10,105 +12,166 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from rime_core.annotations import Annotation, AnnotationStore, generate_id
+from rime_core.annotations import Annotation, AnnotationStore, ConfidenceType, generate_id
+from rime_core.measurements import MeasurementDefinition, MeasurementRecord
+from rime_core.records.revisions import CapturedRevision
 from rime_core.cmf import CMFLoader, CMFPackage
 from rime_core.common.time import time_values_to_seconds
 from rime_core.io.exporters import ExporterRegistry
-from rime_core.inference import InferenceError, InferenceResult, InferenceRunner, InputBinding, OutputMapping
+from rime_core.inference import (
+    InferenceError,
+    InferenceResult,
+    InferenceRunner,
+    InputBinding,
+    OutputMapping,
+)
 from rime_core.loaders import SignalLoaderRegistry
+from rime_core.records import (
+    AnnotationSet,
+    CalculationTemplate,
+    RecordingCatalog,
+    ResearchContext,
+    SignalSource,
+    VideoSource,
+)
 from rime_core.rule_engine import RuleEngine, Violation
 from rime_core.schema import ProtocolSchema
-from rime_core.sessions import (
-    ClinicalMetricSpec,
-    Session,
-    SignalConfig,
-    SubjectInfo,
-    VideoConfig,
-    create_session,
-    load_session,
-    save_session,
-)
 from rime_core.signals import Signal
-
+from rime_core.workspace.models import WorkspaceSession, MAX_VIDEO_VIEWS, SignalSelection
+from rime_core.workspace.storage import (
+    copy_workspace,
+    load_workspace,
+    save_workspace,
+    require_empty_destination,
+)
 
 logger = logging.getLogger(__name__)
-
 ContextCallback = Callable[..., None]
+
+
+def _confidence_type_for_source(source: str) -> ConfidenceType:
+    if source.startswith(("model:", "corrected:")):
+        return "model_probability"
+    return "human_rating" if source == "manual" else "not_recorded"
 
 
 @dataclass
 class WorkingContext:
-    """Owns the live core state for one open session."""
+    """Coordinates editing; each object retains its own bounded responsibility."""
 
-    session: Session
-    schema: ProtocolSchema
-    store: AnnotationStore
-    signals: dict[str, Signal]
-    rule_engine: RuleEngine
+    workspace: WorkspaceSession
+    research: ResearchContext
+    recordings: RecordingCatalog
+    annotation_set: AnnotationSet
+    calculation_templates: list[CalculationTemplate] = field(default_factory=list)
+    measurements: list[MeasurementRecord] = field(default_factory=list)
+    signals: dict[str, Signal] = field(default_factory=dict)
     loaded_models: dict[str, CMFPackage] = field(default_factory=dict)
     loader_registry: SignalLoaderRegistry = field(default_factory=SignalLoaderRegistry.default)
     exporter_registry: ExporterRegistry = field(default_factory=ExporterRegistry.default)
-    _callbacks: dict[str, list[ContextCallback]] = field(
-        default_factory=lambda: defaultdict(list)
-    )
+    _callbacks: dict[str, list[ContextCallback]] = field(default_factory=lambda: defaultdict(list))
+
+    @property
+    def store(self) -> AnnotationStore:
+        return self.annotation_set.annotations
+
+    @property
+    def schema(self) -> ProtocolSchema:
+        return self.annotation_set.protocol
+
+    @property
+    def rule_engine(self) -> RuleEngine:
+        return RuleEngine(self.schema)
 
     @classmethod
     def open(
-        cls,
-        path: str | Path,
-        *,
-        loader_registry: SignalLoaderRegistry | None = None,
+        cls, path: str | Path, *, loader_registry: SignalLoaderRegistry | None = None
     ) -> WorkingContext:
-        """Open a working context from an existing session on disk."""
-        registry = loader_registry or SignalLoaderRegistry.default()
-        session = load_session(path)
-        schema = cls._load_schema_for_session(session)
-        store = cls._load_annotations(session)
-        signals = cls._load_signals(session, registry)
-        return cls(
-            session=session,
-            schema=schema,
-            store=store,
-            signals=signals,
-            rule_engine=RuleEngine(schema),
-            loader_registry=registry,
-            exporter_registry=ExporterRegistry.default(),
+        workspace, research, recordings, annotation_set, templates, measurements = load_workspace(path)
+        context = cls(
+            workspace,
+            research,
+            recordings,
+            annotation_set,
+            templates,
+            measurements,
+            loader_registry=loader_registry or SignalLoaderRegistry.default(),
         )
+        context.reload_signals()
+        return context
 
     @classmethod
-    def create(
+    def create_workspace(
         cls,
-        session_dir: Path | str,
+        directory: Path | str,
         name: str,
         *,
         schema: ProtocolSchema | None = None,
-        videos: list | None = None,
-        signals: list | None = None,
-        subject: SubjectInfo | None = None,
+        videos: list[tuple[Path | str, VideoSource]] | None = None,
+        signals: list[SignalSelection] | None = None,
+        research: ResearchContext | None = None,
+        rater: str = "",
         loader_registry: SignalLoaderRegistry | None = None,
     ) -> WorkingContext:
-        """Create a new session and return its working context."""
-        resolved_schema = schema or ProtocolSchema.default()
-        registry = loader_registry or SignalLoaderRegistry.default()
-        session = create_session(
-            session_dir=Path(session_dir),
-            name=name,
-            videos=videos or [],
-            signals=signals or [],
-            subject=subject,
+        directory = Path(directory).expanduser().resolve()
+        require_empty_destination(directory)
+        recordings = RecordingCatalog()
+        context = cls(
+            WorkspaceSession(directory, name.strip() or directory.name),
+            research or ResearchContext(),
+            recordings,
+            AnnotationSet(recordings.timeline.id, schema or ProtocolSchema.default(), rater=rater),
+            loader_registry=loader_registry or SignalLoaderRegistry.default(),
         )
-        store = AnnotationStore()
-        store._session_id = session.id
-        store._session_name = session.name
-        return cls(
-            session=session,
-            schema=resolved_schema,
-            store=store,
-            signals={},
-            rule_engine=RuleEngine(resolved_schema),
-            loader_registry=registry,
-            exporter_registry=ExporterRegistry.default(),
-        )
+        for path, source in videos or []:
+            context.add_video(path, copy.deepcopy(source))
+        for selection in signals or []:
+            source = context.add_signal(selection.path, copy.deepcopy(selection.source))
+            context.workspace.view.display_channels[source.id] = list(selection.display_channels)
+        context.save()
+        context.reload_signals()
+        return context
+
+    def save_workspace_copy(self, destination: Path | str) -> WorkingContext:
+        return copy_workspace(self, destination)
+
+    def current_revision(self) -> CapturedRevision:
+        return CapturedRevision.capture(self.research, self.recordings, self.annotation_set)
+
+    def capture_measurement(self, definition: MeasurementDefinition) -> MeasurementRecord:
+        record = MeasurementRecord.capture(self.current_revision(), definition)
+        self.measurements.append(record)
+        try:
+            self.save()
+        except Exception:
+            self.measurements.remove(record)
+            raise
+        self._emit("measurements_changed", self.measurements)
+        return record
+
+    def add_video(self, path: Path | str, source: VideoSource | None = None) -> VideoSource:
+        resolved = (self.workspace.root / Path(path).expanduser()).resolve()
+        for existing in self.recordings.videos:
+            if self.workspace.source_path(existing.id) == resolved:
+                return existing
+        if len(self.recordings.videos) >= MAX_VIDEO_VIEWS:
+            raise ValueError("The desktop supports two video views.")
+        source = source or VideoSource()
+        source.file_name = resolved.name
+        source.role = "primary" if not self.recordings.videos else "secondary"
+        self.recordings.videos.append(source)
+        self.workspace.source_locations[source.id] = str(resolved)
+        return source
+
+    def add_signal(self, path: Path | str, source: SignalSource) -> SignalSource:
+        resolved = (self.workspace.root / Path(path).expanduser()).resolve()
+        for existing in self.recordings.signals:
+            if self.workspace.source_path(existing.id) == resolved:
+                return existing
+        source.file_name = resolved.name
+        self.recordings.signals.append(source)
+        self.workspace.source_locations[source.id] = str(resolved)
+        return source
 
     def subscribe(self, event: str, callback: ContextCallback) -> None:
         """Subscribe to context events."""
@@ -137,6 +200,7 @@ class WorkingContext:
         source: str = "manual",
         ghost: bool = False,
         confidence: float = 1.0,
+        confidence_type: ConfidenceType | None = None,
     ) -> tuple[Annotation, list[Violation]]:
         """Create one annotation, apply rule side effects, and emit callbacks."""
         is_point_lane = self.schema.is_point_lane(lane)
@@ -152,6 +216,7 @@ class WorkingContext:
             source=source,
             ghost=ghost,
             confidence=confidence,
+            confidence_type=confidence_type or _confidence_type_for_source(source),
         )
         side_effects, violations = self.rule_engine.on_create(annotation, self.store)
         self.store.add(annotation)
@@ -236,6 +301,7 @@ class WorkingContext:
             annotation.event_type = "point"
         if confidence is not None:
             annotation.confidence = max(0.0, min(1.0, confidence))
+            annotation.confidence_type = "human_rating"
 
         self._autosave()
         self._emit("store_changed", self.store)
@@ -246,21 +312,19 @@ class WorkingContext:
         return self.rule_engine.validate(self.store)
 
     def save(self) -> None:
-        """Persist session metadata and annotations to disk."""
-        save_session(self.session)
-        annotations_path = self.session.session_dir / "annotations" / "annotations.json"
-        self.store.save(annotations_path)
+        """Atomically save native scientific objects and local workspace state."""
+        save_workspace(self)
 
     def replace_store(self, store: AnnotationStore) -> None:
         """Replace the live annotation store and persist it."""
-        self.store = store
+        self.annotation_set.annotations = store
         self._autosave()
         self._emit("store_changed", self.store)
 
-    def update_clinical_metrics(self, metrics: list[ClinicalMetricSpec]) -> None:
-        """Persist the session's saved clinical metrics."""
-        self.session.clinical_metrics = list(metrics)
-        save_session(self.session)
+    def update_clinical_metrics(self, metrics: list[CalculationTemplate]) -> None:
+        """Persist the working calculation templates."""
+        self.calculation_templates = list(metrics)
+        self.save()
 
     def export(
         self,
@@ -273,7 +337,7 @@ class WorkingContext:
         self.exporter_registry.export(
             format_name,
             self.store,
-            self.session,
+            self,
             Path(output_path),
             include_ghost,
         )
@@ -317,9 +381,7 @@ class WorkingContext:
         required_channels = list(config.get("channels", []))
         missing = [channel for channel in required_channels if channel not in signal.channels]
         if missing:
-            errors.append(
-                f"Signal missing required channels: {', '.join(sorted(missing))}"
-            )
+            errors.append(f"Signal missing required channels: {', '.join(sorted(missing))}")
 
         expected_rate = config.get("sampling_rate_hz") or config.get("sample_rate_hz")
         if expected_rate is not None and signal.sampling_rate_hz != float(expected_rate):
@@ -363,25 +425,29 @@ class WorkingContext:
     def _autosave(self) -> None:
         self.save()
 
-    def set_source_offset(self, source_type: str, source_path: str, offset_ms: float) -> None:
+    def set_source_offset(self, source_type: str, source_id: str, offset_ms: float) -> None:
         """Persist a manual offset update for a signal or video source."""
         resolved_offset = float(offset_ms)
+        if not math.isfinite(resolved_offset):
+            raise ValueError("Offset must be finite.")
         if source_type == "signal":
-            config = self._find_signal_config(source_path)
+            config = self._find_signal_config(source_id)
             if config is None:
-                raise KeyError(f"Signal '{source_path}' not found")
+                raise KeyError(f"Signal '{source_id}' not found")
             config.offset_ms = resolved_offset
+            config.sync_method = "manual"
             self._update_loaded_signal_offset(config)
             self._autosave()
             self._emit("signals_changed", self.signals)
             return
         if source_type == "video":
-            config = self._find_video_config(source_path)
+            config = self._find_video_config(source_id)
             if config is None:
-                raise KeyError(f"Video '{source_path}' not found")
+                raise KeyError(f"Video '{source_id}' not found")
             config.offset_ms = resolved_offset
+            config.sync_method = "manual"
             self._autosave()
-            self._emit("session_changed", self.session)
+            self._emit("recordings_changed", self.recordings)
             return
         raise ValueError(f"Unsupported source type '{source_type}'")
 
@@ -390,93 +456,45 @@ class WorkingContext:
             return self.loaded_model
         return self.loaded_models.get(model_name)
 
-    @staticmethod
-    def _load_schema_for_session(session: Session) -> ProtocolSchema:
-        if session.schema_path:
-            schema_path = Path(session.schema_path)
-            if not schema_path.is_absolute():
-                schema_path = session.session_dir / schema_path
-            return ProtocolSchema.load(schema_path)
-        return ProtocolSchema.default()
-
-    @staticmethod
-    def _load_annotations(session: Session) -> AnnotationStore:
-        annotations_path = session.session_dir / "annotations" / "annotations.json"
-        if annotations_path.exists():
-            return AnnotationStore.load(annotations_path)
-
-        store = AnnotationStore()
-        store._session_id = session.id
-        store._session_name = session.name
-        return store
-
-    @classmethod
-    def _load_signals(
-        cls,
-        session: Session,
-        loader_registry: SignalLoaderRegistry,
-    ) -> dict[str, Signal]:
-        loaded: dict[str, Signal] = {}
-        for config in session.signals:
+    def reload_signals(self) -> None:
+        self.signals = {}
+        for source in self.recordings.signals:
+            path = self.workspace.source_path(source.id)
+            if path is None:
+                continue
             try:
-                signal = loader_registry.load(session.get_signal_path(config), config)
+                signal = self.loader_registry.load(path, source)
+                signal.source_id = source.id
+                signal.name = source.name or signal.name
+                self.apply_time_alignment(signal, source)
+                self.signals[source.id] = signal
             except Exception as exc:
-                logger.warning("Could not load signal '%s': %s", config.path, exc)
-                continue
-            cls._apply_session_time_alignment(signal, config, session)
-            loaded[cls._signal_key(config, signal)] = signal
-        return loaded
+                logger.warning("Could not load signal '%s': %s", source.file_name, exc)
 
-    @staticmethod
-    def _apply_session_time_alignment(signal: Signal, config, session: Session) -> None:
-        if config.time_reference != "utc_epoch":
-            signal.offset_ms = config.offset_ms
+    def apply_time_alignment(self, signal: Signal, source: SignalSource) -> None:
+        if source.time_reference != "utc_epoch":
+            signal.offset_ms = source.offset_ms
             return
-
-        if not session.session_start_utc:
+        origin = self.recordings.timeline.origin_utc
+        if not origin:
             logger.warning(
-                "Signal %s uses utc_epoch timestamps but session_start_utc is not set; "
-                "treating first sample as t=0",
-                config.path,
+                "UTC signal %s has no timeline origin; using its first sample", source.file_name
             )
-            signal.offset_ms = config.offset_ms
+            signal.offset_ms = source.offset_ms
             return
+        origin_s = datetime.fromisoformat(origin.replace("Z", "+00:00")).timestamp()
+        first_s = float(
+            time_values_to_seconds(float(signal.data[signal.time_column].iloc[0]), signal.time_unit)
+        )
+        signal.offset_ms = (first_s - origin_s) * 1000.0 + source.offset_ms
 
-        session_start_s = WorkingContext._parse_utc_iso(session.session_start_utc)
-        signal_start_s = WorkingContext._read_first_timestamp_as_epoch_s(signal)
-        signal.offset_ms = (signal_start_s - session_start_s) * 1000.0 + config.offset_ms
+    def _find_signal_config(self, source_id: str) -> SignalSource | None:
+        return next((item for item in self.recordings.signals if item.id == source_id), None)
 
-    @staticmethod
-    def _signal_key(config, signal: Signal) -> str:
-        return config.name or signal.name or Path(config.path).stem
+    def _find_video_config(self, source_id: str) -> VideoSource | None:
+        return next((item for item in self.recordings.videos if item.id == source_id), None)
 
-    def _find_signal_config(self, source_path: str) -> SignalConfig | None:
-        for config in self.session.signals:
-            if config.path == source_path:
-                return config
-        return None
-
-    def _find_video_config(self, source_path: str) -> VideoConfig | None:
-        for config in self.session.videos:
-            if config.path == source_path:
-                return config
-        return None
-
-    def _update_loaded_signal_offset(self, config: SignalConfig) -> None:
-        expected_name = config.name or Path(config.path).stem
-        for signal in self.signals.values():
-            if signal.name not in {expected_name, config.name, Path(config.path).stem}:
-                continue
-            self._apply_session_time_alignment(signal, config, self.session)
-
-    @staticmethod
-    def _parse_utc_iso(value: str) -> float:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
-
-    @staticmethod
-    def _read_first_timestamp_as_epoch_s(signal: Signal) -> float:
-        if signal.time_column not in signal.data.columns:
-            raise ValueError(f"UTC signal requires time column '{signal.time_column}'")
-
-        first_value = float(signal.data[signal.time_column].iloc[0])
-        return float(time_values_to_seconds(first_value, signal.time_unit))
+    def _update_loaded_signal_offset(self, source: SignalSource) -> None:
+        signal = self.signals.get(source.id)
+        if signal is not None:
+            self.apply_time_alignment(signal, source)

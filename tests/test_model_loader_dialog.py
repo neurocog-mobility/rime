@@ -23,7 +23,7 @@ def _app() -> QApplication:
 
 def test_choose_loaded_package_returns_confirmed_package(tmp_path: Path) -> None:
     _app()
-    package_dir = _write_wrapper_package(tmp_path / "demo-model.rime")
+    package_dir = _write_wrapper_package(tmp_path / "demo-model.cmf")
 
     original_directory = QtWidgets.QFileDialog.getExistingDirectory
     original_exec = ModelLoaderDialog.exec
@@ -56,7 +56,7 @@ def test_choose_loaded_package_returns_confirmed_package(tmp_path: Path) -> None
 
 def test_model_loader_dialog_uses_tabs_and_empty_placeholders(tmp_path: Path) -> None:
     _app()
-    package_dir = _write_wrapper_package(tmp_path / "empty-model.rime")
+    package_dir = _write_wrapper_package(tmp_path / "empty-model.cmf")
     package = CMFLoader.load(package_dir)
     package.config.inputs = []
     package.config.outputs = []
@@ -65,8 +65,8 @@ def test_model_loader_dialog_uses_tabs_and_empty_placeholders(tmp_path: Path) ->
 
     dialog = ModelLoaderDialog(package)
 
-    assert dialog.minimumWidth() == 640
-    assert dialog.minimumHeight() == 480
+    assert dialog.width() >= dialog.tabs.tabBar().sizeHint().width()
+    assert dialog.height() >= dialog.minimumSizeHint().height()
     assert dialog.tabs.count() == 5
     assert [dialog.tabs.tabText(i) for i in range(dialog.tabs.count())] == [
         "Inputs",

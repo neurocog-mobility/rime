@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from rime_core.common.time import time_values_to_seconds
-from rime_core.sessions import SignalConfig
+from rime_core.records import SignalSource
 
 
 def detect_signal_config(path: str | Path, sample_rows: int = 200) -> dict[str, object]:
@@ -75,6 +75,7 @@ class Signal:
     offset_ms: float = 0.0
     time_reference: str = "relative"
     time_unit: str = "seconds"
+    source_id: str = ""
 
     @property
     def duration_ms(self) -> float:
@@ -120,9 +121,9 @@ class Signal:
 
 def load_csv_signal(
     path: str | Path,
-    config: SignalConfig,
+    config: SignalSource,
 ) -> Signal:
-    """Load one CSV-backed signal using the session manifest config."""
+    """Load one CSV-backed signal using the recording source description."""
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Signal file not found: {path}")

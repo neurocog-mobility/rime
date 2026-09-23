@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, Qt, Signal
+import math
+
+from PySide6.QtCore import QPoint, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen, QPolygon, QWheelEvent
-from PySide6.QtWidgets import QScrollArea, QSplitter, QToolTip, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QScrollArea, QSplitter, QToolTip, QToolButton, QVBoxLayout, QWidget
 
 from rime_core.annotations import AnnotationStore
 from rime_core.schema import LaneSchema, ProtocolSchema
@@ -16,6 +18,7 @@ from rime_ui.shortcuts import (
     resolve_shortcuts,
 )
 from rime_ui.theme import (
+    native_surface_color,
     COLOR_ACCENT_MUTED,
     COLOR_ANCHOR,
     COLOR_BORDER,
@@ -54,7 +57,9 @@ COMPARISON_SOURCE = "__comparison__"
 MATCHED_MODE_SOURCE = "__matched__"
 
 
-def annotation_indicator_symbols(*, ghost: bool = False, violating: bool = False) -> tuple[str, ...]:
+def annotation_indicator_symbols(
+    *, ghost: bool = False, violating: bool = False
+) -> tuple[str, ...]:
     """Return the status badge symbols shown alongside annotation labels."""
     symbols: list[str] = []
     if ghost:
@@ -82,15 +87,23 @@ class AnnotationLanes(QWidget):
     view_range_changed = Signal(float, float)  # start_ms, end_ms (for sync)
     selection_changed = Signal(bool, bool)  # has_annotation, has_snap
     loop_region_changed = Signal(float, float)  # start_ms, end_ms
+    content_height_changed = Signal(int)
 
     # Signal for overlay lane selection
     overlay_level_changed = Signal(int, object)  # level, source
     lane_header_context_requested = Signal(str, object, object)
 
-    def __init__(self, schema: ProtocolSchema, parent=None) -> None:
+    def __init__(self, schema: ProtocolSchema, parent=None, *, single_set=False) -> None:
         super().__init__(parent)
+        self._row_height = SUB_ROW_HEIGHT
+        self._ruler_height = RULER_HEIGHT
+        self._seek_height = RULER_HEIGHT
+        self._zoom_overview = None
+        self._header_height = HEADER_HEIGHT
 
         self.schema = schema
+        self.single_set = single_set
+        self.show_lane_titles = True
 
         # Group state
         self._group_state: dict[str, bool] = {}  # name -> collapsed
@@ -129,6 +142,8 @@ class AnnotationLanes(QWidget):
         self._selected_snap_index: int | None = None
 
         self._last_hovered_id: str | None = None
+        self._seek_hover_ms: float | None = None
+        self._is_scrubbing = False
 
         # Drag state
         self._is_dragging = False
@@ -170,6 +185,8 @@ class AnnotationLanes(QWidget):
             (metrics.horizontalAdvance(lane.name) for lane in self.schema.lanes),
             default=0,
         )
+        if getattr(self, "native_palette", False):
+            widest_label = max(widest_label, metrics.horizontalAdvance("Suggestions"))
         padded_width = widest_label + 36
         self._label_width = max(LABEL_WIDTH_MIN, min(LABEL_WIDTH_MAX, padded_width))
 
@@ -180,13 +197,55 @@ class AnnotationLanes(QWidget):
 
     def _recalculate_height(self) -> None:
         """Calculate and set the required height based on visible lanes."""
-        total_height = RULER_HEIGHT + 20 + sum(height for _item, _y, height in self._display_rows())
+        if getattr(self, "native_palette", False):
+            text_height = self.fontMetrics().height()
+            self._row_height = max(36, text_height + 16)
+            self._seek_height = max(36, text_height + 18)
+            self._ruler_height = self._seek_height + (
+                max(20, text_height + 4) if self._zoom_overview is not None else 0
+            )
+            self._header_height = max(HEADER_HEIGHT, text_height + 8)
+        total_height = (
+            self._ruler_height + 20 + sum(height for _item, _y, height in self._display_rows())
+        )
+        changed = total_height != self.minimumHeight()
         self.setMinimumHeight(total_height)
+        if changed:
+            self.content_height_changed.emit(total_height)
+        self._layout_playback_controls()
         self.update()
+
+    def embed_overview(self, overview):
+        """Make zoom/overview controls part of the playback ruler, not a separate row."""
+        self._zoom_overview = overview
+        overview.setParent(self)
+        self._zoom_fit = QToolButton(self)
+        self._zoom_fit.setText("Fit")
+        self._zoom_fit.setAutoRaise(True)
+        self._zoom_fit.setAccessibleName("Fit whole recording")
+        self._zoom_fit.setToolTip("Show the whole recording")
+        self._zoom_fit.clicked.connect(self.zoom_to_fit)
+        self._recalculate_height()
+        overview.show()
+        self._zoom_fit.show()
+
+    def _layout_playback_controls(self):
+        if self._zoom_overview is None:
+            return
+        height = self._ruler_height - self._seek_height
+        self._zoom_overview.setGeometry(
+            self._label_width, self._seek_height, max(1, self.width() - self._label_width), height
+        )
+        self._zoom_fit.setGeometry(self._label_width - 38, self._seek_height, 32, height)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._layout_playback_controls()
 
     def set_store(self, store: AnnotationStore) -> None:
         """Set the annotation store for rendering."""
         self._store = store
+        self._recalculate_height()
         self._selected_id = None
         self._selected_snap_index = None
         self._ensure_active_overlay_target()
@@ -343,7 +402,9 @@ class AnnotationLanes(QWidget):
         self.update()
 
     def _emit_selection_state(self) -> None:
-        self.selection_changed.emit(self._selected_id is not None, self._selected_snap_index is not None)
+        self.selection_changed.emit(
+            self._selected_id is not None, self._selected_snap_index is not None
+        )
 
     def _normalized_loop_bounds(self, start_ms: float, end_ms: float) -> tuple[float, float]:
         start = float(min(start_ms, end_ms))
@@ -407,9 +468,7 @@ class AnnotationLanes(QWidget):
 
     def _ensure_active_overlay_target(self) -> None:
         visible_levels = [
-            item["lane"].level
-            for item in self._display_items()
-            if item["kind"] == "lane"
+            item["lane"].level for item in self._display_items() if item["kind"] == "lane"
         ]
         if not visible_levels:
             self._active_overlay_level = 1
@@ -434,7 +493,7 @@ class AnnotationLanes(QWidget):
         lane_y = self._lane_y(level)
         if lane_y < 0:
             return None
-        row_index = int((y - lane_y) // SUB_ROW_HEIGHT)
+        row_index = int((y - lane_y) // self._row_height)
         sources = self._lane_sources(level)
         if not sources:
             return None
@@ -442,19 +501,32 @@ class AnnotationLanes(QWidget):
         return sources[row_index]
 
     def _lane_sources(self, level: int) -> list[str]:
+        # Painting asks for row geometry for every annotation. Scan the store only
+        # once per lane per paint, and discard the cache before the next event.
+        cache = getattr(self, "_paint_lane_sources", None)
+        if cache is None:
+            return self._compute_lane_sources(level)
+        if level not in cache:
+            cache[level] = self._compute_lane_sources(level)
+        return cache[level]
+
+    def _compute_lane_sources(self, level: int) -> list[str]:
         """Ordered unique sources in this lane: manual first, remainder alphabetical."""
         if self._comparison_mode_active():
             sources = [SESSION_A_SOURCE, COMPARISON_SOURCE]
-            if (
-                self._matched_episode_store is not None
-                and any(
-                    self._lane_name_to_level(ann.lane) == level
-                    for ann in self._matched_episode_store.annotations.values()
-                )
+            if self._matched_episode_store is not None and any(
+                self._lane_name_to_level(ann.lane) == level
+                for ann in self._matched_episode_store.annotations.values()
             ):
                 sources.append(MATCHED_MODE_SOURCE)
             return sources
 
+        if self.single_set:
+            has_suggestions = self._store and any(
+                ann.ghost and self._lane_name_to_level(ann.lane) == level
+                for ann in self._store.annotations.values()
+            )
+            return ["manual", "suggestions"] if has_suggestions else ["manual"]
         if not self._store:
             sources = ["manual"]
         else:
@@ -469,24 +541,29 @@ class AnnotationLanes(QWidget):
         if (
             self._show_comparison
             and self._comparison_store is not None
-            and any(self._lane_name_to_level(ann.lane) == level for ann in self._comparison_store.annotations.values())
+            and any(
+                self._lane_name_to_level(ann.lane) == level
+                for ann in self._comparison_store.annotations.values()
+            )
         ):
             sources.append(COMPARISON_SOURCE)
         return sources
 
     def _lane_total_height(self, level: int) -> int:
-        return max(LANE_MIN_HEIGHT, len(self._lane_sources(level)) * SUB_ROW_HEIGHT)
+        return max(LANE_MIN_HEIGHT, len(self._lane_sources(level)) * self._row_height)
 
     def _sub_row_y(self, level: int, source: str) -> int:
         lane_y = self._lane_y(level)
-        if lane_y < RULER_HEIGHT:
+        if lane_y < self._ruler_height:
             return lane_y
         sources = self._lane_sources(level)
         source_name = source or "manual"
         row_index = sources.index(source_name) if source_name in sources else len(sources) - 1
-        return lane_y + row_index * SUB_ROW_HEIGHT
+        return lane_y + row_index * self._row_height
 
     def _source_short_label(self, source: str) -> str:
+        if source == "suggestions":
+            return "Suggestions"
         if source == SESSION_A_SOURCE:
             return "A"
         if source == "manual":
@@ -536,11 +613,11 @@ class AnnotationLanes(QWidget):
 
     def _display_rows(self):
         """Yield display items with their vertical origin and height."""
-        current_y = RULER_HEIGHT
+        current_y = self._ruler_height
         for item in self._display_items():
             if item["kind"] == "group_header":
-                yield item, current_y, HEADER_HEIGHT
-                current_y += HEADER_HEIGHT
+                yield item, current_y, self._header_height
+                current_y += self._header_height
                 continue
             lane_height = self._lane_total_height(item["lane"].level)
             yield item, current_y, lane_height
@@ -586,11 +663,14 @@ class AnnotationLanes(QWidget):
         return [
             ann
             for ann in store.annotations.values()
-            if not ann.ghost and (lane_name is None or ann.lane == lane_name)
+            if not ann.ghost
+            and (lane_name is None or ann.lane == lane_name)
             and (source is None or ann.source == source)
         ]
 
     def _primary_row_source(self, source: str | None) -> str:
+        if self.single_set:
+            return "suggestions" if source == "suggestions" else "manual"
         if self._comparison_mode_active():
             return SESSION_A_SOURCE
         return source or "manual"
@@ -652,7 +732,7 @@ class AnnotationLanes(QWidget):
 
     def _y_to_lane(self, y: float) -> int | None:
         """Get lane level from y coordinate, or None if not in a lane."""
-        if y < RULER_HEIGHT:
+        if y < self._ruler_height:
             return None
 
         for item, row_y, row_height in self._display_rows():
@@ -673,6 +753,13 @@ class AnnotationLanes(QWidget):
     # --- Painting ---
 
     def paintEvent(self, event) -> None:
+        self._paint_lane_sources = {}
+        try:
+            self._paint_timeline(event)
+        finally:
+            self._paint_lane_sources = None
+
+    def _paint_timeline(self, event) -> None:
         """Draw the timeline."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -681,7 +768,9 @@ class AnnotationLanes(QWidget):
         height = self.height()
 
         # Background
-        painter.fillRect(0, 0, width, height, QColor(COLOR_WINDOW_ALT_BG))
+        painter.fillRect(
+            0, 0, width, height, QColor(native_surface_color(self, COLOR_WINDOW_ALT_BG))
+        )
 
         # Draw time ruler
         self._draw_ruler(painter, width)
@@ -693,6 +782,14 @@ class AnnotationLanes(QWidget):
         # paint over the lane labels on the left.
         painter.save()
         painter.setClipRect(self._label_width, 0, max(0, width - self._label_width), height)
+
+        if getattr(self, "native_palette", False):
+            grid = QColor(native_surface_color(self, COLOR_BORDER))
+            grid.setAlpha(80)
+            painter.setPen(QPen(grid, 1, Qt.PenStyle.DotLine))
+            for time_ms in self.time_ticks():
+                x = round(self._time_to_x(time_ms))
+                painter.drawLine(x, self._ruler_height, x, height)
 
         # Draw loop region behind annotations
         self._draw_loop_region(painter, height)
@@ -712,28 +809,65 @@ class AnnotationLanes(QWidget):
 
         # Draw playhead
         self._draw_playhead(painter, height)
+        if getattr(self, "native_palette", False):
+            self._draw_seek_preview(painter, height)
         painter.restore()
 
         painter.end()
 
     def _draw_ruler(self, painter: QPainter, width: int) -> None:
         """Draw time ruler at top."""
-        painter.fillRect(0, 0, width, RULER_HEIGHT, QColor(COLOR_WINDOW_BG))
+        painter.fillRect(
+            0, 0, width, self._ruler_height, QColor(native_surface_color(self, COLOR_WINDOW_BG))
+        )
 
-        painter.setPen(QPen(QColor(COLOR_TEXT_SUBTLE), 1))
+        painter.setPen(QPen(QColor(native_surface_color(self, COLOR_TEXT_SUBTLE)), 1))
+        if getattr(self, "native_palette", False):
+            tint = QColor(COLOR_ACCENT_MUTED)
+            tint.setAlpha(20)
+            painter.fillRect(0, 0, width, self._ruler_height, tint)
+            painter.drawText(
+                8, 0, self._label_width - 16, self._seek_height,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, "Playback",
+            )
+            if self._zoom_overview is not None:
+                painter.drawText(
+                    8, self._seek_height, self._label_width - 48, self._ruler_height - self._seek_height,
+                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, "Zoom",
+                )
+            for time_ms in self.time_ticks():
+                x = min(width - 1, round(self._time_to_x(time_ms)))
+                painter.drawLine(x, self._seek_height - 8, x, self._seek_height)
+                time_str = self._format_time(round(time_ms))
+                if self._view_end_ms - self._view_start_ms < 5000:
+                    time_str += f".{round(time_ms) % 1000:03d}"
+                text_width = painter.fontMetrics().horizontalAdvance(time_str)
+                text_x = max(self._label_width, min(x - text_width // 2, width - text_width - 2))
+                painter.drawText(text_x, self._seek_height - 10, time_str)
+            return
         num_markers = 10
         for i in range(num_markers + 1):
             x = self._label_width + int(i * (width - self._label_width) / num_markers)
-            painter.drawLine(x, RULER_HEIGHT - 8, x, RULER_HEIGHT)
+            painter.drawLine(x, self._ruler_height - 8, x, self._ruler_height)
 
-            painter.drawLine(x, RULER_HEIGHT - 8, x, RULER_HEIGHT)
+            painter.drawLine(x, self._ruler_height - 8, x, self._ruler_height)
 
             time_ms = self._view_start_ms + (i / num_markers) * (
                 self._view_end_ms - self._view_start_ms
             )
             time_str = self._format_time(int(time_ms))
             if i < num_markers:
-                painter.drawText(x + 4, RULER_HEIGHT - 10, time_str)
+                painter.drawText(x + 4, self._ruler_height - 10, time_str)
+
+    def time_ticks(self):
+        """Readable major time positions shared with the signal plot."""
+        span = max(1, self._view_end_ms - self._view_start_ms)
+        target = span / max(2, (self.width() - self._label_width) // 160)
+        magnitude = 10 ** math.floor(math.log10(target))
+        step = next(n * magnitude for n in (1, 2, 5, 10) if n * magnitude >= target)
+        start = math.ceil(self._view_start_ms / step)
+        stop = math.floor(self._view_end_ms / step)
+        return [i * step for i in range(start, stop + 1)]
 
     def _draw_lanes(self, painter: QPainter, width: int) -> None:
         """Draw swimlane backgrounds, labels, and group headers."""
@@ -752,27 +886,32 @@ class AnnotationLanes(QWidget):
         """Draw a collapsible group header."""
         painter.save()
 
-        painter.fillRect(0, y, width, HEADER_HEIGHT, QColor(COLOR_WINDOW_BG))
+        painter.fillRect(
+            0, y, width, self._header_height, QColor(native_surface_color(self, COLOR_WINDOW_BG))
+        )
 
         # Border
-        painter.setPen(QPen(QColor(COLOR_BORDER), 1))
-        painter.drawLine(0, y + HEADER_HEIGHT - 1, width, y + HEADER_HEIGHT - 1)
+        painter.setPen(QPen(QColor(native_surface_color(self, COLOR_BORDER)), 1))
+        painter.drawLine(0, y + self._header_height - 1, width, y + self._header_height - 1)
 
         # Icon
         icon = "▶" if collapsed else "▼"
-        painter.setPen(QPen(QColor(COLOR_TEXT), 1))
+        painter.setPen(QPen(QColor(native_surface_color(self, COLOR_TEXT)), 1))
 
         # Font settings for header
         font = painter.font()
-        font.setPointSize(10)
+        if not getattr(self, "native_palette", False):
+            font.setPointSize(10)
         font.setBold(True)
         painter.setFont(font)
 
         # Vertically centered text for 20px height (approx baseline at 14)
-        text_y = y + 14
+        text_y = y + (self._header_height + painter.fontMetrics().ascent() - painter.fontMetrics().descent()) // 2
 
         painter.drawText(8, text_y, icon)
-        painter.drawText(24, text_y, name.upper())
+        painter.drawText(
+            24, text_y, name if getattr(self, "native_palette", False) else name.upper()
+        )
 
         painter.restore()
 
@@ -783,7 +922,7 @@ class AnnotationLanes(QWidget):
         lane_height = self._lane_total_height(lane.level)
 
         # Alternating background (simplified)
-        bg_color = COLOR_TIMELINE_ROW_BG
+        bg_color = native_surface_color(self, COLOR_TIMELINE_ROW_BG)
         painter.fillRect(0, y, width, lane_height, QColor(bg_color))
         if self._comparison_mode_active():
             tint = QColor(lane.color)
@@ -791,39 +930,55 @@ class AnnotationLanes(QWidget):
             painter.fillRect(self._label_width, y, width - self._label_width, lane_height, tint)
 
         # Label background
-        label_bg = COLOR_WINDOW_ALT_BG if is_child else COLOR_WINDOW_BG
+        label_bg = native_surface_color(self, COLOR_WINDOW_ALT_BG if is_child else COLOR_WINDOW_BG)
         painter.fillRect(0, y, self._label_width, lane_height, QColor(label_bg))
 
         # Lane label
         lane_is_active = lane.level == self._active_overlay_level
-        label_color = COLOR_TEXT_STRONG if lane_is_active else COLOR_TEXT_SUBTLE
+        label_color = native_surface_color(
+            self, COLOR_TEXT_STRONG if lane_is_active else COLOR_TEXT_SUBTLE
+        )
         painter.setPen(QPen(QColor(label_color), 1))
 
         font = painter.font()
         font.setBold(lane_is_active)
         painter.setFont(font)
 
-        if not self._comparison_mode_active():
+        if not self._comparison_mode_active() and self.show_lane_titles:
             indent = 20 if is_child else 8
             label_text = painter.fontMetrics().elidedText(
                 lane.name,
                 Qt.TextElideMode.ElideRight,
                 max(8, self._label_width - indent - 8),
             )
-            painter.drawText(indent, y + 20, label_text)
+            painter.drawText(
+                indent, y, self._label_width - indent - 8, self._row_height,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, label_text,
+            )
 
         # Active indicator
         if lane_is_active:
             painter.fillRect(0, y, 4, lane_height, QColor(COLOR_ACCENT_MUTED))
 
         for index, source in enumerate(self._lane_sources(lane.level)):
-            sub_y = y + index * SUB_ROW_HEIGHT
+            sub_y = y + index * self._row_height
             if index > 0:
-                painter.setPen(QPen(QColor(COLOR_BORDER), 1, Qt.PenStyle.DotLine))
+                painter.setPen(
+                    QPen(QColor(native_surface_color(self, COLOR_BORDER)), 1, Qt.PenStyle.DotLine)
+                )
                 painter.drawLine(self._label_width, sub_y, width, sub_y)
             if self._show_source_label(index):
                 row_is_active = lane_is_active and source == self._active_overlay_source
-                painter.setPen(QPen(QColor(COLOR_TEXT_EMPHASIS if row_is_active else COLOR_TEXT_SUBTLE), 1))
+                painter.setPen(
+                    QPen(
+                        QColor(
+                            native_surface_color(
+                                self, COLOR_TEXT_EMPHASIS if row_is_active else COLOR_TEXT_SUBTLE
+                            )
+                        ),
+                        1,
+                    )
+                )
                 row_font = painter.font()
                 row_font.setBold(row_is_active)
                 painter.setFont(row_font)
@@ -831,13 +986,13 @@ class AnnotationLanes(QWidget):
                     4,
                     sub_y,
                     self._label_width - 8,
-                    SUB_ROW_HEIGHT,
+                    self._row_height,
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                     self._source_short_label(source),
                 )
 
         # Separator
-        painter.setPen(QPen(QColor(COLOR_BORDER), 1))
+        painter.setPen(QPen(QColor(native_surface_color(self, COLOR_BORDER)), 1))
         painter.drawLine(0, y + lane_height - 1, width, y + lane_height - 1)
 
     def _draw_annotations(self, painter: QPainter) -> None:
@@ -858,7 +1013,7 @@ class AnnotationLanes(QWidget):
             if level is None:
                 continue
             sub_row_top = self._sub_row_y(level, self._primary_row_source(ann.source))
-            sub_row_height = SUB_ROW_HEIGHT
+            sub_row_height = self._row_height
             if ann.event_type == "point":
                 self._draw_point_marker(
                     painter,
@@ -902,7 +1057,7 @@ class AnnotationLanes(QWidget):
             if level is None:
                 continue
             sub_row_top = self._sub_row_y(level, COMPARISON_SOURCE)
-            sub_row_height = SUB_ROW_HEIGHT
+            sub_row_height = self._row_height
             if ann.event_type == "point":
                 self._draw_point_marker(
                     painter,
@@ -945,7 +1100,7 @@ class AnnotationLanes(QWidget):
             if level is None:
                 continue
             sub_row_top = self._sub_row_y(level, MATCHED_MODE_SOURCE)
-            sub_row_height = SUB_ROW_HEIGHT
+            sub_row_height = self._row_height
             if ann.event_type == "point":
                 self._draw_point_marker(
                     painter,
@@ -990,12 +1145,14 @@ class AnnotationLanes(QWidget):
         x1 = self._time_to_x(start_ms)
         x2 = self._time_to_x(end_ms)
         y = self._lane_y(level) + 4 if bar_top is None else bar_top
-        bar_height = SUB_ROW_HEIGHT - 6 if bar_height is None else bar_height
+        bar_height = self._row_height - 6 if bar_height is None else bar_height
 
         color = color_override or self._get_lane_color(level)
 
         # Selected state
-        is_selected = not comparison and ann_id == self._selected_id
+        is_selected = not comparison and (
+            ann_id == self._selected_id or ann_id in getattr(self, "review_selected_ids", set())
+        )
 
         # Draw bar
         bar_color = self._annotation_fill_color(
@@ -1008,7 +1165,7 @@ class AnnotationLanes(QWidget):
 
         # Draw border if selected
         if is_selected:
-            painter.setPen(QPen(QColor(COLOR_TEXT_STRONG), 2))
+            painter.setPen(QPen(QColor(native_surface_color(self, COLOR_TEXT_STRONG)), 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(int(x1), y, int(x2 - x1), bar_height)
         elif comparison:
@@ -1032,8 +1189,21 @@ class AnnotationLanes(QWidget):
             violating=has_violation,
         )
         if bar_width > 40:
-            painter.setPen(QPen(QColor(COLOR_TEXT_STRONG), 1))
-            text = label[: int(bar_width / 8)]  # Rough character estimate
+            text_color = QColor(COLOR_TEXT_STRONG)
+            if getattr(self, "native_palette", False):
+                backdrop = QColor(native_surface_color(self, COLOR_TIMELINE_ROW_BG))
+                alpha = bar_color.alphaF()
+                brightness = sum(
+                    weight * (foreground * alpha + background * (1 - alpha))
+                    for weight, foreground, background in zip(
+                        (0.2126, 0.7152, 0.0722), bar_color.getRgb()[:3], backdrop.getRgb()[:3]
+                    )
+                )
+                text_color = QColor("#171717" if brightness > 150 else "#ffffff")
+            painter.setPen(QPen(text_color, 1))
+            text = painter.fontMetrics().elidedText(
+                label, Qt.TextElideMode.ElideRight, max(0, int(bar_width) - 8)
+            )
             painter.drawText(int(x1) + 4, y + bar_height - 6, text)
 
     def _draw_point_marker(
@@ -1054,9 +1224,9 @@ class AnnotationLanes(QWidget):
         """Draw a point event marker within a lane."""
         x = int(self._time_to_x(time_ms))
         row_top = self._lane_y(level) if sub_row_top is None else sub_row_top
-        row_height = SUB_ROW_HEIGHT if sub_row_height is None else sub_row_height
+        row_height = self._row_height if sub_row_height is None else sub_row_height
         y = row_top + 2
-        if y < RULER_HEIGHT:
+        if y < self._ruler_height:
             return
 
         color = self._point_marker_color(
@@ -1082,8 +1252,10 @@ class AnnotationLanes(QWidget):
             )
         )
 
-        if not comparison and ann_id == self._selected_id:
-            painter.setPen(QPen(QColor(COLOR_TEXT_STRONG), 1))
+        if not comparison and (
+            ann_id == self._selected_id or ann_id in getattr(self, "review_selected_ids", set())
+        ):
+            painter.setPen(QPen(QColor(native_surface_color(self, COLOR_TEXT_STRONG)), 1))
             painter.drawLine(x - 4, row_top + row_height - 5, x + 4, row_top + row_height - 5)
 
         badge_width = self._draw_status_badges(
@@ -1098,7 +1270,7 @@ class AnnotationLanes(QWidget):
 
         available_width = self.width() - x - 8
         if available_width > 36:
-            painter.setPen(QPen(QColor(COLOR_TEXT_STRONG), 1))
+            painter.setPen(QPen(QColor(native_surface_color(self, COLOR_TEXT_STRONG)), 1))
             painter.drawText(
                 text_x,
                 row_top + row_height - 8,
@@ -1197,18 +1369,22 @@ class AnnotationLanes(QWidget):
         badge_size = max(10, min(14, height - 2 if height > 2 else 10))
         badge_y = top + max(0, (height - badge_size) // 2)
         painter.setPen(Qt.PenStyle.NoPen)
-        badge_color = QColor(COLOR_CONFIDENCE_WARN) if symbol == "?" else QColor(COLOR_CONFIDENCE_ERROR)
+        badge_color = (
+            QColor(COLOR_CONFIDENCE_WARN) if symbol == "?" else QColor(COLOR_CONFIDENCE_ERROR)
+        )
         painter.setBrush(badge_color)
         painter.drawEllipse(left, badge_y, badge_size, badge_size)
         painter.setPen(QPen(QColor(COLOR_TEXT_STRONG), 1))
-        painter.drawText(left, badge_y, badge_size, badge_size, Qt.AlignmentFlag.AlignCenter, symbol)
+        painter.drawText(
+            left, badge_y, badge_size, badge_size, Qt.AlignmentFlag.AlignCenter, symbol
+        )
 
     def _draw_drag_preview(self, painter: QPainter) -> None:
         """Draw rubber-band preview during drag-to-create."""
         x1 = min(self._drag_start_x, self._drag_end_x)
         x2 = max(self._drag_start_x, self._drag_end_x)
         y = self._sub_row_y(self._drag_lane, "manual") + 3
-        bar_height = SUB_ROW_HEIGHT - 6
+        bar_height = self._row_height - 6
 
         # Semi-transparent preview
         preview_color = QColor(COLOR_ACCENT_MUTED)
@@ -1216,7 +1392,7 @@ class AnnotationLanes(QWidget):
         painter.fillRect(int(x1), y, int(x2 - x1), bar_height, preview_color)
 
         # Dashed border
-        pen = QPen(QColor(COLOR_TEXT_STRONG), 1, Qt.PenStyle.DashLine)
+        pen = QPen(QColor(native_surface_color(self, COLOR_TEXT_STRONG)), 1, Qt.PenStyle.DashLine)
         painter.setPen(pen)
         painter.drawRect(int(x1), y, int(x2 - x1), bar_height)
 
@@ -1226,18 +1402,84 @@ class AnnotationLanes(QWidget):
             playhead_x = int(self._time_to_x(self._current_position_ms))
             color = QColor(COLOR_TRIM_EDGE)
             painter.setPen(QPen(color, 2))
-            painter.drawLine(playhead_x, RULER_HEIGHT, playhead_x, height)
+            painter.drawLine(
+                playhead_x, 20 if getattr(self, "native_palette", False) else self._ruler_height,
+                playhead_x, height,
+            )
+
+            if getattr(self, "native_palette", False):
+                # A gripped tab inside the seek strip reads as a draggable control.
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(color)
+                top = 3
+                painter.drawRoundedRect(playhead_x - 8, top, 16, 12, 3, 3)
+                painter.drawPolygon(QPolygon([
+                    QPoint(playhead_x - 6, top + 11),
+                    QPoint(playhead_x + 6, top + 11),
+                    QPoint(playhead_x, top + 17),
+                ]))
+                painter.setBrush(QColor("#ffffff"))
+                for offset in (-3, 1):
+                    for row in (3, 7):
+                        painter.drawEllipse(playhead_x + offset, top + row, 2, 2)
+                return
 
             # Downward-pointing triangle head at the ruler/lane boundary
             tip_size = 6
-            triangle = QPolygon([
-                QPoint(playhead_x, RULER_HEIGHT + tip_size),        # tip
-                QPoint(playhead_x - tip_size, RULER_HEIGHT - 2),    # left
-                QPoint(playhead_x + tip_size, RULER_HEIGHT - 2),    # right
-            ])
+            triangle = QPolygon(
+                [
+                    QPoint(playhead_x, self._ruler_height + tip_size),  # tip
+                    QPoint(playhead_x - tip_size, self._ruler_height - 2),  # left
+                    QPoint(playhead_x + tip_size, self._ruler_height - 2),  # right
+                ]
+            )
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(color)
             painter.drawPolygon(triangle)
+
+    def _draw_seek_preview(self, painter: QPainter, height: int) -> None:
+        if self._seek_hover_ms is None:
+            return
+        x = min(self.width() - 1, round(self._time_to_x(self._seek_hover_ms)))
+        color = QColor(native_surface_color(self, COLOR_TEXT_SUBTLE))
+        color.setAlpha(100)
+        painter.setPen(QPen(color, 1, Qt.PenStyle.DashLine))
+        painter.drawLine(x, self._ruler_height, x, height)
+        ms = round(self._seek_hover_ms)
+        text = self._format_time(ms) + f".{ms % 1000:03d}"
+        text_width = painter.fontMetrics().horizontalAdvance(text) + 12
+        left = x - text_width // 2
+        if abs(x - self._time_to_x(self._current_position_ms)) <= 12:
+            left = x + 14 if x + text_width + 16 < self.width() else x - text_width - 14
+        left = max(self._label_width, min(left, self.width() - text_width - 2))
+        box = QRect(left, 1, text_width, painter.fontMetrics().height() + 4)
+        painter.setPen(QPen(QColor(native_surface_color(self, COLOR_BORDER)), 1))
+        painter.setBrush(QColor(native_surface_color(self, COLOR_WINDOW_ALT_BG)))
+        painter.drawRoundedRect(box, 3, 3)
+        painter.setPen(QColor(native_surface_color(self, COLOR_TEXT_STRONG)))
+        painter.drawText(box, Qt.AlignmentFlag.AlignCenter, text)
+
+    def _hit_test_playhead(self, x, y):
+        return (
+            2 <= y <= 20
+            and abs(x - self._time_to_x(self._current_position_ms)) <= 10
+        )
+
+    def _scrub_to(self, x):
+        time_ms = max(0, min(self._duration_ms, self._view_end_ms, max(self._view_start_ms, self._x_to_time(x))))
+        self._current_position_ms = time_ms
+        self._seek_hover_ms = time_ms
+        self.position_clicked.emit(time_ms)
+        self.update()
+
+    def _start_scrubbing(self, x):
+        self._selected_snap_index = None
+        self._selected_id = None
+        self._emit_selection_state()
+        self._is_scrubbing = True
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        QToolTip.hideText()
+        self._scrub_to(x)
 
     def _draw_snap_points(self, painter: QPainter) -> None:
         """Draw snap point markers on the ruler."""
@@ -1253,10 +1495,10 @@ class AnnotationLanes(QWidget):
             # Diamond shape at top of ruler
             size = 6
             points = [
-                (x, RULER_HEIGHT - size * 2),  # top
-                (x + size, RULER_HEIGHT - size),  # right
-                (x, RULER_HEIGHT),  # bottom
-                (x - size, RULER_HEIGHT - size),  # left
+                (x, self._seek_height - size * 2),  # top
+                (x + size, self._seek_height - size),  # right
+                (x, self._seek_height),  # bottom
+                (x - size, self._seek_height - size),  # left
             ]
             polygon = QPolygon([QPoint(px, py) for px, py in points])
             painter.drawPolygon(polygon)
@@ -1265,7 +1507,7 @@ class AnnotationLanes(QWidget):
             if is_selected:
                 pen = QPen(QColor(COLOR_ANCHOR), 1, Qt.PenStyle.DashLine)
                 painter.setPen(pen)
-                painter.drawLine(x, RULER_HEIGHT, x, self.height())
+                painter.drawLine(x, self._ruler_height, x, self.height())
 
     def _draw_loop_region(self, painter: QPainter, height: int) -> None:
         region = self.get_loop_region()
@@ -1279,27 +1521,27 @@ class AnnotationLanes(QWidget):
 
         fill = QColor(COLOR_LOOP_BORDER)
         fill.setAlpha(45)
-        painter.fillRect(x1, RULER_HEIGHT, x2 - x1, max(0, height - RULER_HEIGHT), fill)
+        painter.fillRect(x1, self._ruler_height, x2 - x1, max(0, height - self._ruler_height), fill)
 
         edge_pen = QPen(QColor(COLOR_LOOP_ACCENT), 2)
         painter.setPen(edge_pen)
-        painter.drawLine(x1, RULER_HEIGHT, x1, height)
-        painter.drawLine(x2, RULER_HEIGHT, x2, height)
+        painter.drawLine(x1, self._ruler_height, x1, height)
+        painter.drawLine(x2, self._ruler_height, x2, height)
 
         painter.setBrush(QColor(COLOR_LOOP_ACCENT))
         handle_size = 5
         left_handle = QPolygon(
             [
-                QPoint(x1, RULER_HEIGHT),
-                QPoint(x1 - handle_size, RULER_HEIGHT - handle_size),
-                QPoint(x1 + handle_size, RULER_HEIGHT - handle_size),
+                QPoint(x1, self._seek_height),
+                QPoint(x1 - handle_size, self._seek_height - handle_size),
+                QPoint(x1 + handle_size, self._seek_height - handle_size),
             ]
         )
         right_handle = QPolygon(
             [
-                QPoint(x2, RULER_HEIGHT),
-                QPoint(x2 - handle_size, RULER_HEIGHT - handle_size),
-                QPoint(x2 + handle_size, RULER_HEIGHT - handle_size),
+                QPoint(x2, self._seek_height),
+                QPoint(x2 - handle_size, self._seek_height - handle_size),
+                QPoint(x2 + handle_size, self._seek_height - handle_size),
             ]
         )
         painter.drawPolygon(left_handle)
@@ -1321,7 +1563,7 @@ class AnnotationLanes(QWidget):
             return
 
         if event.button() == Qt.MouseButton.RightButton:
-            if x < self._label_width and y >= RULER_HEIGHT:
+            if x < self._label_width and y >= self._ruler_height:
                 lane = self._y_to_lane(y)
                 lane_name = self._level_to_lane_name(lane) if lane is not None else None
                 if lane_name:
@@ -1341,7 +1583,7 @@ class AnnotationLanes(QWidget):
         self.setFocus(Qt.FocusReason.MouseFocusReason)
 
         # Check if clicking on lane label (for overlay toggle) OR group header
-        if x < self._label_width and y >= RULER_HEIGHT:
+        if x < self._label_width and y >= self._ruler_height:
             # Check if group header clicked
             for item, row_y, row_height in self._display_rows():
                 if item["kind"] != "group_header":
@@ -1360,7 +1602,14 @@ class AnnotationLanes(QWidget):
                 return
 
         # Check if clicking on the ruler (seek or snap point)
-        if y < RULER_HEIGHT:
+        if y < self._ruler_height:
+            if getattr(self, "native_palette", False):
+                if x < self._label_width:
+                    return
+                if self._hit_test_playhead(x, y):
+                    self._start_scrubbing(x)
+                    event.accept()
+                    return
             edge = self._hit_test_loop_edge(x, y)
             if edge is not None:
                 self._loop_drag_mode = edge
@@ -1380,7 +1629,10 @@ class AnnotationLanes(QWidget):
                     return
 
             # Check for snap point click first
-            snap_index = self._hit_test_snap_point(x)
+            snap_index = (
+                None if getattr(self, "native_palette", False) and y < self._seek_height - 14
+                else self._hit_test_snap_point(x)
+            )
             if snap_index is not None:
                 self._selected_snap_index = snap_index
                 self._is_dragging_snap = True
@@ -1394,6 +1646,10 @@ class AnnotationLanes(QWidget):
                 return
 
             # Otherwise seek
+            if getattr(self, "native_palette", False):
+                self._start_scrubbing(x)
+                event.accept()
+                return
             self._selected_snap_index = None
             self._selected_id = None
             self._emit_selection_state()
@@ -1422,6 +1678,8 @@ class AnnotationLanes(QWidget):
         # Start drag-to-create
         lane = self._y_to_lane(y)
         if lane is not None and x >= self._label_width and self._primary_track_editable():
+            if self.single_set and self._source_at_y(lane, y) == "suggestions":
+                return
             if self._lane_is_point(lane):
                 time_ms = self._snap_to_nearest(self._x_to_time(x))
                 self.annotation_created.emit(lane, time_ms, time_ms)
@@ -1453,6 +1711,18 @@ class AnnotationLanes(QWidget):
         """Handle mouse move for drag preview, edge detection, and hovering."""
         x = event.position().x()
         y = event.position().y()
+
+        if self._is_scrubbing:
+            self._scrub_to(x)
+            event.accept()
+            return
+        if getattr(self, "native_palette", False):
+            self._seek_hover_ms = None
+            self.setToolTip("")
+            if y < self._ruler_height and self._last_hovered_id is not None:
+                self._last_hovered_id = None
+                QToolTip.hideText()
+            self.update()
 
         if self._is_panning:
             content_width = max(1, self.width() - self._label_width)
@@ -1501,6 +1771,12 @@ class AnnotationLanes(QWidget):
             self.update()
             return
 
+        if getattr(self, "native_palette", False) and x >= self._label_width and self._hit_test_playhead(x, y):
+            self._seek_hover_ms = self._current_position_ms
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            self.setToolTip("Click to seek · Drag to scrub")
+            return
+
         if self._hit_test_loop_edge(x, y):
             self.setCursor(Qt.CursorShape.SizeHorCursor)
             return
@@ -1509,10 +1785,21 @@ class AnnotationLanes(QWidget):
             return
 
         # Ruler zone: indicate it's seekable unless a snap point is nearby
-        if y < RULER_HEIGHT:
+        if y < self._ruler_height:
+            if getattr(self, "native_palette", False):
+                if x < self._label_width:
+                    self.unsetCursor()
+                    return
+                if y < self._seek_height - 14 or self._hit_test_snap_point(x) is None:
+                    self._seek_hover_ms = self._x_to_time(x)
+                    self.setCursor(Qt.CursorShape.PointingHandCursor)
+                    self.setToolTip("Click to seek · Drag to scrub")
+                else:
+                    self.setCursor(Qt.CursorShape.OpenHandCursor)
+                    self.setToolTip("Drag to move snap point")
+                return
             snap_hit = any(
-                abs(self._time_to_x(t) - x) <= SNAP_HIT_RADIUS
-                for t in self._snap_points
+                abs(self._time_to_x(t) - x) <= SNAP_HIT_RADIUS for t in self._snap_points
             )
             if not snap_hit:
                 self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1545,6 +1832,15 @@ class AnnotationLanes(QWidget):
             return
 
         if event.button() != Qt.MouseButton.LeftButton:
+            return
+
+        if self._is_scrubbing:
+            self._scrub_to(event.position().x())
+            self._is_scrubbing = False
+            self._seek_hover_ms = None
+            self.unsetCursor()
+            self.update()
+            event.accept()
             return
 
         if self._loop_drag_mode is not None:
@@ -1581,6 +1877,11 @@ class AnnotationLanes(QWidget):
 
     def leaveEvent(self, event) -> None:
         self._last_hovered_id = None
+        self._seek_hover_ms = None
+        self.setToolTip("")
+        if not self._is_scrubbing:
+            self.unsetCursor()
+        self.update()
         QToolTip.hideText()
         super().leaveEvent(event)
 
@@ -1636,9 +1937,7 @@ class AnnotationLanes(QWidget):
                     return
 
                 if modifiers & Qt.KeyboardModifier.ShiftModifier:
-                    ann.end_ms = max(
-                        ann.start_ms + 1, min(ann.end_ms + delta, self._duration_ms)
-                    )
+                    ann.end_ms = max(ann.start_ms + 1, min(ann.end_ms + delta, self._duration_ms))
                 else:
                     ann.start_ms = max(0, min(ann.start_ms + delta, ann.end_ms - 1))
                 self.annotation_modified.emit(self._selected_id, ann.start_ms, ann.end_ms)
@@ -1680,7 +1979,9 @@ class AnnotationLanes(QWidget):
     # --- Hit testing ---
 
     def _hit_test_loop_edge(self, x: float, y: float) -> str | None:
-        if y >= RULER_HEIGHT:
+        if y >= self._seek_height:
+            return None
+        if getattr(self, "native_palette", False) and y < self._seek_height - 14:
             return None
         region = self.get_loop_region()
         if not region:
@@ -1694,7 +1995,9 @@ class AnnotationLanes(QWidget):
         return None
 
     def _hit_test_loop_body(self, x: float, y: float) -> bool:
-        if y >= RULER_HEIGHT:
+        if y >= self._seek_height:
+            return False
+        if getattr(self, "native_palette", False) and y < self._seek_height - 14:
             return False
         region = self.get_loop_region()
         if not region:
@@ -1764,7 +2067,7 @@ class AnnotationLanes(QWidget):
         )
         for ann in annotations:
             row_top = self._sub_row_y(lane, self._primary_row_source(ann.source))
-            row_bottom = row_top + SUB_ROW_HEIGHT
+            row_bottom = row_top + self._row_height
             if not (row_top <= y < row_bottom):
                 continue
             if ann.event_type == "point":
@@ -1816,7 +2119,7 @@ class AnnotationLanes(QWidget):
             if ann.event_type == "point":
                 continue
             row_top = self._sub_row_y(lane, self._primary_row_source(ann.source))
-            row_bottom = row_top + SUB_ROW_HEIGHT
+            row_bottom = row_top + self._row_height
             if not (row_top <= y < row_bottom):
                 continue
             if abs(time_ms - ann.start_ms) < threshold_ms:
@@ -1908,6 +2211,9 @@ class AnnotationLanes(QWidget):
                 f"Type: interval\n"
                 f"Source: {ann.source}"
             )
+        warning = getattr(self, "annotation_warnings", {}).get(ann_id)
+        if warning:
+            text += "\n" + warning
         QToolTip.showText(global_pos, text, self)
 
     @staticmethod
@@ -2001,8 +2307,8 @@ class TimelineWidget(QWidget):
         self.signals.setMinimumHeight(100)
         self.splitter.addWidget(self.signals)
 
-        # Set default sizes (e.g., 50/50 starting point, but relative to window)
-        self.splitter.setSizes([200, 200])
+        # Give annotation lanes room before the signal preview; both remain resizable.
+        self.splitter.setSizes([320, 180])
 
         # Connect internal signals
         self._connect_signals()
@@ -2167,7 +2473,9 @@ class TimelineWidget(QWidget):
 
             lane_schema = self.lanes.schema.get_lane(ann.lane)
             color = lane_schema.color if lane_schema else COLOR_ACCENT_MUTED
-            self.signals.add_overlay(ann.id, ann.start_ms / 1000.0, ann.end_ms / 1000.0, color=color)
+            self.signals.add_overlay(
+                ann.id, ann.start_ms / 1000.0, ann.end_ms / 1000.0, color=color
+            )
 
     def refresh_overlays(self) -> None:
         self._load_all_overlays()

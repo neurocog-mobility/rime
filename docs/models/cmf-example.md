@@ -1,27 +1,38 @@
 # CMF in Practice
 
-This page walks through two real `.rime` packages to show how CMF handles different model types end to end:
+This page walks through two real `.cmf` packages to show how CMF handles different model types end to end:
 
-- **Freeze Index** — a classical algorithm, single channel, no binary weights
+- **Welch Freeze Index exemplar** — a fixed signal estimator plus a fitted classifier
 - **Walking Classifier** — a trained ONNX model, two input streams, explicit tensor shapes
 
 ---
 
-## Example 1: Freeze Index
+## Example 1: Welch Freeze Index exemplar
 
 ### The model
 
-The **Freeze Index** (Moore et al., 2008) is the most widely used algorithmic FOG detector. It computes the ratio of power in the *freeze band* (3–8 Hz) to the *locomotor band* (0.5–3 Hz) from lower-limb vertical accelerometry. A high ratio indicates gait is dominated by tremor-like oscillations rather than walking rhythm.
+The exemplar computes a three-second Welch Freeze Index and applies a fixed
+one-feature logistic classifier. It is the same signal estimator used in the
+Welch freeze-index feature. The classifier makes that score
+usable within CMF's probability-to-interval workflow; it is a
+development-calibrated demonstration operator, not a clinically validated FOG
+detector.
 
 ### Package structure
 
 ```
-freeze-index.rime/
+freeze-index.cmf/
+├── SHA256SUMS
+├── classifier.json
 ├── config.json
+├── labels.json
+├── README.md
 └── wrapper.py
 ```
 
-No compiled binaries, no extra data files required.
+`wrapper.py` contains the complete Welch estimator. `classifier.json` stores
+the fitted logistic coefficient, intercept, decision-rule record, and
+provenance.
 
 ---
 
@@ -29,9 +40,10 @@ No compiled binaries, no extra data files required.
 
 ```json
 {
-  "cmf_version": "1.0",
-  "name": "Freeze Index",
-  "description": "Classic Freeze Index (Moore et al., 2008). PSD ratio of freeze band (3-8 Hz) to locomotor band (0.5-3 Hz) from lower-limb vertical accelerometry."
+  "cmf_version": "1.1",
+  "name": "Welch Freeze Index exemplar",
+  "version": "3.0.0",
+  "description": "Windowed FOG annotation exemplar using the same three-second Welch Freeze Index estimator as the packaged feature implementation and a fixed one-feature logistic classifier calibrated on the FOG-COA development corpus."
 }
 ```
 
@@ -48,7 +60,7 @@ The `name` and `description` are what appear in RIME's model browser. The `cmf_v
     "type": "signal",
     "channels": ["acc_z"],
     "sampling_rate_hz": 128,
-    "description": "Vertical acceleration (z-axis) from lower-limb sensor"
+    "description": "Vertical acceleration proxy from the left-shank sensor; bind the physical vertical axis explicitly."
   }
 ]
 ```
@@ -56,7 +68,7 @@ The `name` and `description` are what appear in RIME's model browser. The `cmf_v
 RIME uses this to:
 
 1. Check whether the current session has a compatible signal before offering the model
-2. Slice and resample the signal to match before calling `wrapper.py`
+2. Verify the declared 128 Hz sampling rate and slice complete windows before calling `wrapper.py`
 
 The wrapper receives `inputs["accel_window"]` as a NumPy array with no parsing required.
 
@@ -80,7 +92,7 @@ The three output types across the bundled models illustrate the range:
 
 | Model | Output type | What it produces |
 |---|---|---|
-| Freeze Index | `probability` | Confidence score per window → intervals |
+| Welch Freeze Index exemplar | `probability` | Confidence score per window → intervals |
 | Walking Classifier | `probability` | Confidence score per window → intervals |
 | Step Detector | `point` | Discrete timestamps (heel strikes) |
 
@@ -91,41 +103,37 @@ The three output types across the bundled models illustrate the range:
 ```json
 "inference": {
   "mode": "windowed",
-  "window_size_ms": 6000,
+  "window_size_ms": 3000,
   "stride_ms": 500,
-  "threshold": 0.9
+  "window_anchor": "start",
+  "terminal_window": "drop",
+  "threshold": 0.5,
+  "postprocessing": {
+    "merge_gap_ms": 0,
+    "min_duration_ms": 0
+  }
 }
 ```
 
-`mode: windowed` means RIME slides a 6-second window over the signal in 500 ms steps, calling the model on each window. Adjacent windows that exceed the threshold are merged into a single annotation interval.
+`mode: windowed` means RIME slides a complete 3-second window over the signal
+in 500 ms steps, timestamps it at the window start, and drops any terminal
+partial window. Values greater than or equal to the conventional probability
+cutoff of 0.50 are positive. Their complete window extents are unioned into
+annotations; the zero merge gap adds no bridge between separated extents, and
+the zero minimum duration removes none of the reconstructed intervals.
 
 ---
 
-### User-adjustable parameters
+### Fixed estimator profile
 
 ```json
-"parameters": [
-  {
-    "name": "fi_centre",
-    "label": "FI Threshold",
-    "type": "float",
-    "default": 2.0,
-    "min": 0.5,
-    "max": 10.0,
-    "description": "FI value mapped to 50% probability via sigmoid"
-  },
-  {
-    "name": "fi_scale",
-    "label": "Sigmoid Steepness",
-    "type": "float",
-    "default": 1.0,
-    "min": 0.1,
-    "max": 5.0
-  }
-]
+"parameters": []
 ```
 
-These appear as sliders in RIME's model settings dialog. The user can adjust them without touching any code. When they change a parameter, RIME re-runs inference and updates the annotations immediately.
+The estimator itself has no hidden runtime controls: Welch preprocessing, the
+0.5–3 Hz and 3–8 Hz bands, log-ratio scaling, and the absence of score smoothing
+are fixed in the package declaration. Window size, stride, decision threshold,
+merge gap, and minimum duration remain explicit CMF execution declarations.
 
 ---
 
@@ -152,12 +160,12 @@ The wrapper implements a single class with two methods:
 ```python
 class CMFModel:
     def __init__(self, model_dir: str) -> None:
-        # Load config, read parameter defaults and sampling rate
+        # Load the declared defaults and fitted classifier artifact
         ...
 
     def predict(self, inputs, params=None) -> dict[str, np.ndarray]:
-        # Compute Welch PSD, calculate freeze/locomotor band power
-        # Map FI ratio → probability via sigmoid
+        # Compute the three-second Welch log band-power ratio
+        # Apply the stored logistic classifier
         # Return {"fog_probability": array([p])}
         ...
 ```
@@ -174,12 +182,12 @@ The wrapper doesn't need to know anything about RIME, sessions, or file formats.
 
 ### What RIME does with this
 
-When you load the Freeze Index model on a session:
+When you load the Welch Freeze Index exemplar on a session:
 
-1. RIME reads `config.json` and checks the session has an `acc_z` channel at (or resampleable to) 128 Hz
-2. RIME slides the 6 s window over the signal in 500 ms steps, resampling as needed
+1. RIME reads `config.json` and checks the bound signal has the declared vertical proxy channel at 128 Hz
+2. RIME slides the 3 s window over the signal in 500 ms steps
 3. Each window is passed to `predict()` as `inputs["accel_window"]`
-4. Returned probabilities are thresholded at 0.9 and merged into contiguous intervals
+4. Returned probabilities are thresholded at the declared 0.50 cutoff and reconstructed using the declared window, merge-gap, and minimum-duration semantics
 5. Intervals are written into the **FOG** lane as **FOG** annotations
 
 The result appears in the timeline alongside manual annotations, ready for side-by-side comparison or model evaluation.
@@ -202,7 +210,7 @@ This example shows:
 ### Package structure
 
 ```
-walking-classifier.rime/
+walking-classifier.cmf/
 ├── config.json
 ├── model.onnx
 └── wrapper.py
@@ -297,4 +305,4 @@ All preprocessing (unit conversion, gravity removal via median subtraction, L2 m
 
 ## Writing your own model
 
-To package your own detector as a `.rime` file, see [Loading a Model](loading-a-model.md).
+To package your own detector as a `.cmf` file, see [Loading a Model](loading-a-model.md).

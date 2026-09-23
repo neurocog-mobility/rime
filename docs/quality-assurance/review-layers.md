@@ -1,38 +1,17 @@
-# Review Layers
+# Review annotations
 
-A review layer loads a second set of annotations (from another rater, or a model) alongside your own, for comparison and resolution.
+1. Choose **New review**, enter a name, save folder and reviewer, and **Add workspace…** for each input. Inputs must be compatible, including protocol and primary recording.
+2. **Create review**, then select a lane and label under **Review scope**.
+3. Choose **New decision** and check the inputs to resolve together. Timeline clicks seek/highlight; checkboxes select decision membership.
+4. Choose an operation or custom boundaries, inspect the preview, add a note, and **Save decision**.
 
-## What is a review layer?
+Select a **Saved decision** to edit or remove it. **New annotation** adds output
+absent from the inputs. Shared-input markers identify reuse across decisions.
+Original inputs remain separate from reviewer output.
 
-Rather than overwriting your annotations, a review layer displays an external annotation set as a separate visual layer on the timeline. You can compare them side by side and decide which to accept.
+Measurements use saved reviewer output, excluding unresolved inputs and unsaved
+previews. Use **File → Save review** to persist work and reopen its JSON to resume.
+**Save records…** exports measurements with retained review information.
 
-
-## Loading a review layer
-
-**Session → Load Review Layer**
-
-- Select the source annotation file (exported from another RIME session, or an ELAN file)
-- Choose the mode:
-  - **Pending** — load as a proposed set of changes to review and accept/reject
-  - **Reference** — load as a read-only reference layer (e.g. a gold standard)
-
-
-## Reviewing pending annotations
-
-- Pending annotations appear in a distinct colour on the timeline
-- Click a pending annotation to accept, reject, or modify it
-- Accepted annotations are merged into your primary annotation set
-
-## Typical IRR workflow
-
-```mermaid
-flowchart LR
-    A[Rater 1 annotates] --> C[Export annotations]
-    B[Rater 2 annotates] --> C
-    C --> D[Load Rater 2 as review layer in Rater 1 session]
-    D --> E[Compute IRR]
-    E --> F[Resolve disagreements]
-    F --> G[Save final checkpoint]
-```
-
-See [Inter-Rater Reliability](irr.md) for computing IRR scores.
+Try the [review examples](../examples.md). Model proposals use the separate
+[model workflow](../models/loading-a-model.md).

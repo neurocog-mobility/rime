@@ -55,32 +55,20 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - RIME: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Your First Session: getting-started/first-session.md
-    - Importing from ELAN: getting-started/import-from-elan.md
-  - Study Setup:
-    - Protocol & Schema: study-setup/protocol-schema.md
-    - Session Wizard: study-setup/session-wizard.md
-    - Signal Configuration: study-setup/signal-config.md
-  - Annotation:
-    - Annotation Workflow: annotation/workflow.md
-    - Labels & Lanes: annotation/labels-and-lanes.md
-    - Rules & Violations: annotation/rules-and-violations.md
-    - Checkpoints: annotation/checkpoints.md
-  - Quality Assurance:
-    - Review Layers: quality-assurance/review-layers.md
-    - Inter-Rater Reliability: quality-assurance/irr.md
-  - Clinical Analysis:
-    - Coverage: clinical-analysis/coverage.md
-    - Clinical Metrics: clinical-analysis/clinical-metrics.md
-  - Export:
-    - Session Reports: export/session-reports.md
-    - Annotation Export: export/annotation-export.md
-    - Dataset Export: export/dataset-export.md
-  - Models:
-    - What is CMF?: models/what-is-cmf.md
-    - CMF in Practice: models/cmf-example.md
-    - Loading a Model: models/loading-a-model.md
-    - Model Evaluation: models/model-evaluation.md
+  - Home: index.md
+  - Guide:
+    - Install: getting-started/installation.md
+    - Create a workspace: getting-started/first-session.md
+    - Annotate: annotation/workflow.md
+    - Review: quality-assurance/review-layers.md
+    - Run a model: models/loading-a-model.md
+    - Save and compare measurements: clinical-analysis/clinical-metrics.md
+    - Save and reopen work: study-setup/workspace-persistence.md
+    - Examples: examples.md
+  - Reference:
+    - Study protocols: study-setup/protocol-schema.md
+    - RIME specification: measurement-records/rime-specification.md
+    - Exchange API: measurement-records/exchange.md
+    - Comparison semantics: measurement-records/comparison.md
+    - CMF specification: models/cmf-specification.md
+    - CMF examples: models/cmf-example.md

@@ -4,17 +4,11 @@
 
 A lane is a horizontal row on the timeline representing one dimension of annotation — for example, a FOG lane, a gait phase lane, or a context lane. Lanes are defined by the [protocol schema](../study-setup/protocol-schema.md).
 
-## The annotation hierarchy (L1–L5)
+## Ordering and groups
 
-RIME supports up to five levels of nested annotation lanes. This allows coarse and fine-grained annotations to coexist and relate to each other — for example, L1 for task boundaries, L2 for FOG episodes, L3 for FOG subtypes.
-
-| Level | Typical use |
-|---|---|
-| L1 | Task / walking bout |
-| L2 | Gait phase or context |
-| L3 | Primary event (e.g. FOG episode) |
-| L4 | Event subtype |
-| L5 | Fine-grained detail or notes |
+The protocol assigns each lane a level and can group lanes. These are study-defined;
+there is no universal five-level hierarchy. GP-FOG includes Tasks, FOG and more
+detailed lanes.
 
 ## Labels within a lane
 

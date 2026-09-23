@@ -33,13 +33,13 @@ def compute_coverage(
     numerator: list[CoverageSpec],
     *,
     denominator: list[CoverageSpec] | None = None,
-    session_duration_ms: float,
+    timeline_duration_ms: float,
 ) -> CoverageResult:
     """Compute merged-interval coverage over non-ghost annotations."""
     numerator_ms, numerator_episodes = _union_duration_ms(_matched_intervals(store, numerator))
 
     if denominator is None:
-        denominator_ms = max(0.0, float(session_duration_ms))
+        denominator_ms = max(0.0, float(timeline_duration_ms))
         denominator_episodes = -1
     else:
         denominator_ms, denominator_episodes = _union_duration_ms(

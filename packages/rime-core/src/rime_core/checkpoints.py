@@ -14,7 +14,7 @@ from rime_core.annotations import AnnotationStore
 PRE_DESTRUCTIVE_LIMIT = 10
 RESTORE_GUARD_LIMIT = 2
 
-KIND_SESSION_OPEN = "session_open"
+KIND_WORKSPACE_OPEN = "workspace_open"
 KIND_PRE_DESTRUCTIVE = "pre_destructive"
 KIND_MANUAL = "manual"
 KIND_RESTORE_GUARD = "restore_guard"

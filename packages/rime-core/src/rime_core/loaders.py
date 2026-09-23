@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from rime_core.sessions import SignalConfig
+from rime_core.records import SignalSource
 from rime_core.signals import Signal, load_csv_signal
 
 
-SignalLoader = Callable[[Path, SignalConfig], Signal]
+SignalLoader = Callable[[Path, SignalSource], Signal]
 
 
 class SignalLoaderError(Exception):
@@ -40,7 +40,7 @@ class SignalLoaderRegistry:
         """Return True if a loader is registered for the given format."""
         return signal_format.casefold() in self._loaders
 
-    def load(self, path: Path, config: SignalConfig) -> Signal:
+    def load(self, path: Path, config: SignalSource) -> Signal:
         """Load one signal using the declared format."""
         loader = self._loaders.get(config.format.casefold())
         if loader is None:
@@ -48,4 +48,4 @@ class SignalLoaderRegistry:
         try:
             return loader(path, config)
         except Exception as exc:  # pragma: no cover - exercised by failure tests
-            raise SignalLoaderError(f"Failed to load signal '{config.path}': {exc}") from exc
+            raise SignalLoaderError(f"Failed to load signal '{path}': {exc}") from exc
