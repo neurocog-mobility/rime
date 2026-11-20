@@ -56,6 +56,35 @@ def workspace(tmp_path):
     )
 
 
+def test_alignment_nudges_direction_step_reset_and_preserves_reference(workspace, app):
+    from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QPushButton
+    from rime_ui.presentation.annotation_editor import AnnotationEditor
+
+    editor = AnnotationEditor(workspace)
+    editor.sources()
+    dialog = editor.alignment_dialog
+    reference, signal = [s["config"]["id"] for s in workspace.data["sources"]]
+    assert dialog.findChild(QDoubleSpinBox, f"alignment_offset_{reference}") is None
+    earlier = dialog.findChild(QPushButton, f"alignment_earlier_{signal}")
+    later = dialog.findChild(QPushButton, f"alignment_later_{signal}")
+    earlier.click()
+    assert workspace.data["sources"][1]["config"]["offset_ms"] == -50
+    assert editor.loaded_signals[signal].offset_ms == -50
+    step = dialog.findChild(QComboBox, "alignment_nudge_step")
+    step.setCurrentIndex(step.findData(1.0))
+    later.click()
+    assert workspace.data["sources"][1]["config"]["offset_ms"] == 950
+    assert editor.loaded_signals[signal].offset_ms == 950
+    dialog.findChild(QPushButton, f"alignment_reset_{signal}").click()
+    assert workspace.data["sources"][1]["config"]["offset_ms"] == 0
+    assert workspace.data["sources"][0]["config"]["offset_ms"] == 0
+    dialog.close()
+    editor.pause()
+    editor.close()
+    editor.deleteLater()
+    app.processEvents()
+
+
 def test_save_edit_resume_undo_and_fixed_import(workspace, tmp_path):
     w = workspace
     a = Annotation("event", "Event", "Freeze", 100, 300)

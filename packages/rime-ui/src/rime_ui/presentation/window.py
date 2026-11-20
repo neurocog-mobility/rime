@@ -348,6 +348,12 @@ class RimeWindow(QMainWindow):
                         choice.setCurrentText(lane)
                 selectors[tier] = choice
                 form.addRow(tier, choice)
+            suggestions = QCheckBox("Generate protocol-based suggestions for imported annotations")
+            suggestions.setToolTip(
+                "Suggestions remain pending until you accept, modify or reject them. "
+                "Imported annotations are preserved."
+            )
+            form.addRow(suggestions)
             buttons = QDialogButtonBox(
                 QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
             )
@@ -385,8 +391,9 @@ class RimeWindow(QMainWindow):
                     if not label_dialog.exec():
                         return
                     labels = {text: choice.currentText() for text, choice in label_choices.items()}
-                self.pending_import = (path, mapping, labels)
-                self.import_label.setText(Path(path).name)
+                self.pending_import = (path, mapping, labels, suggestions.isChecked())
+                suffix = " · protocol suggestions enabled" if suggestions.isChecked() else ""
+                self.import_label.setText(Path(path).name + suffix)
         except Exception as exc:
             QMessageBox.warning(self, "Import not selected", str(exc))
 
@@ -405,6 +412,7 @@ class RimeWindow(QMainWindow):
         self.save_action = self.action(
             file, "Save workspace", self.save_workspace, QKeySequence.StandardKey.Save
         )
+        self.export_action = self.action(file, "Export dataset…", self.export_dataset)
         self.action(file, "Close window", self.close, QKeySequence.StandardKey.Close)
         edit = self.menuBar().addMenu("&Edit")
         self.undo_action = self.action(edit, "Undo", self.undo, QKeySequence.StandardKey.Undo)
@@ -460,8 +468,17 @@ class RimeWindow(QMainWindow):
         )
         self.saved.setText(self.workspace_name if kind == "workspace" else "")
         self.save_action.setEnabled(kind == "workspace")
+        self.export_action.setEnabled(kind == "workspace")
         self.undo_action.setEnabled(kind == "workspace")
         self.redo_action.setEnabled(kind == "workspace")
+
+    def export_dataset(self):
+        from .dataset_export import DatasetExportDialog
+
+        if self.context == "workspace" and self.editor:
+            dialog = DatasetExportDialog(self.editor.workspace, self)
+            dialog.exec()
+            dialog.deleteLater()
 
     def go_home(self):
         if self.editor:

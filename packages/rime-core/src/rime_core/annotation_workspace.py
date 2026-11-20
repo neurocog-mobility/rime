@@ -249,8 +249,8 @@ def source_entry(path, config, kind):
     return {"kind": kind, "path": str(path), "config": asdict(config)}
 
 
-def import_annotations(workspace, path, tier_map, label_map=None):
-    """Preserve the selected EAF intervals without applying automatic rules."""
+def import_annotations(workspace, path, tier_map, label_map=None, generate_suggestions=False):
+    """Preserve mapped EAF intervals, optionally adding pending protocol suggestions."""
     from rime_core.elan_import import import_eaf
 
     path = Path(path).resolve()
@@ -263,12 +263,22 @@ def import_annotations(workspace, path, tier_map, label_map=None):
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "tier_map": tier_map,
         "label_map": result.label_mappings,
+        "generate_suggestions": generate_suggestions,
         "annotations": annotations,
     }
 
     def update(d):
         d["imports"].append(retained)
         d["annotations"].extend(deepcopy(annotations))
+        if generate_suggestions:
+            from rime_core.suggestions import assist
+
+            # Stage reviewable suggestions so import remains one atomic, undoable change.
+            staged = AnnotationWorkspace(d)
+            for annotation in result.store.all():
+                assist(staged, annotation)
+            if "suggestion_runs" in staged.data:
+                d["suggestion_runs"] = deepcopy(staged.data["suggestion_runs"])
 
     workspace.change(update)
     return len(annotations)

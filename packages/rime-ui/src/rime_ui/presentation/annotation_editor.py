@@ -781,58 +781,126 @@ class AnnotationEditor(QWidget):
         dialog.setWindowTitle("Alignment")
         layout = QVBoxLayout(dialog)
         body = QWidget()
-        form = QFormLayout(body)
-        form.setContentsMargins(0, 0, 0, 0)
+        content = QVBoxLayout(body)
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(10)
         area = ContentScrollArea(dialog)
         area.setWidget(body)
         layout.addWidget(area)
-        form.addRow(QLabel("Timeline time = source time + offset"))
-        help_text = QLabel(
-            "Already synchronized before import? Leave offsets at zero if the sources "
-            "already share the video timeline. Describe the method, tools, timing cues "
-            "or checks in the notes below. Notes are saved with the workspace and "
-            "included in measurement records."
-        )
-        help_text.setWordWrap(True)
-        form.addRow(help_text)
+        hint = QLabel("Match the same moment across recordings. Play or seek while adjusting.")
+        hint.setWordWrap(True)
+        content.addWidget(hint)
+        nudge_row = QHBoxLayout()
+        nudge_row.addWidget(QLabel("Nudge by"))
+        step = QComboBox()
+        step.setObjectName("alignment_nudge_step")
+        for title, seconds in (("10 ms", 0.01), ("50 ms", 0.05), ("100 ms", 0.1), ("1 s", 1.0)):
+            step.addItem(title, seconds)
+        step.setCurrentIndex(1)
+        step.setToolTip("Amount moved by each Earlier or Later click.")
+        nudge_row.addWidget(step)
+        nudge_row.addStretch()
+        content.addLayout(nudge_row)
         videos = 0
         for source in self.workspace.data["sources"]:
             config = source["config"]
             if source["kind"] == "video":
                 videos += 1
-            spin = QDoubleSpinBox()
-            spin.setRange(-86400, 86400)
-            spin.setDecimals(3)
-            spin.setSingleStep(0.05)
-            spin.setSuffix(" s")
-            spin.setValue(config["offset_ms"] / 1000)
-            spin.setEnabled(not (source["kind"] == "video" and videos == 1))
-            spin.valueChanged.connect(
-                lambda seconds, identifier=config["id"]: self.mutate(
-                    lambda: self.workspace.set_offset(identifier, seconds * 1000)
+            reference = source["kind"] == "video" and videos == 1
+            title = config.get("label") or config.get("name") or Path(source["path"]).name
+            card = WorkspaceSection(title)
+            card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+            card.heading.setWordWrap(True)
+            card.heading.setToolTip(str(source["path"]))
+            content.addWidget(card)
+            if reference:
+                card.header.addWidget(QLabel("Reference · fixed"))
+                card.body.addWidget(QLabel("Other recordings are shifted relative to this video."))
+            else:
+                controls = QHBoxLayout()
+                earlier = QPushButton("← Earlier")
+                earlier.setObjectName(f"alignment_earlier_{config['id']}")
+                earlier.setToolTip("Move this recording earlier on the shared timeline.")
+                later = QPushButton("Later →")
+                later.setObjectName(f"alignment_later_{config['id']}")
+                later.setToolTip("Move this recording later on the shared timeline.")
+                spin = QDoubleSpinBox()
+                spin.setObjectName(f"alignment_offset_{config['id']}")
+                spin.setAccessibleName(f"Time shift for {title}")
+                spin.setRange(-86400, 86400)
+                spin.setDecimals(3)
+                spin.setSingleStep(step.currentData())
+                spin.setSuffix(" s")
+                spin.setKeyboardTracking(False)
+                spin.setValue(config["offset_ms"] / 1000)
+                spin.setToolTip("Negative: earlier. Positive: later. Zero: no shift.")
+                earlier.clicked.connect(lambda checked=False, field=spin: field.stepDown())
+                later.clicked.connect(lambda checked=False, field=spin: field.stepUp())
+                step.currentIndexChanged.connect(
+                    lambda index, field=spin: field.setSingleStep(step.itemData(index))
                 )
-            )
-            form.addRow(
-                QLabel(config.get("label") or config.get("name") or Path(source["path"]).name), spin
-            )
+                reset = QPushButton("Reset")
+                reset.setObjectName(f"alignment_reset_{config['id']}")
+                reset.setToolTip("Remove this recording's time shift (0 s).")
+                reset.clicked.connect(lambda checked=False, field=spin: field.setValue(0))
+                for control in (earlier, spin, later, reset):
+                    controls.addWidget(control)
+                card.body.addLayout(controls)
+                status = QLabel()
+                status.setProperty("role", "muted")
+                card.body.addWidget(status)
+
+                def describe(seconds, label=status):
+                    label.setText(
+                        "No time shift" if seconds == 0 else
+                        f"Shifted {abs(seconds):.3f} s {'earlier' if seconds < 0 else 'later'} on the timeline"
+                    )
+
+                describe(spin.value())
+                spin.valueChanged.connect(describe)
+                spin.valueChanged.connect(
+                    lambda seconds, identifier=config["id"]: self.mutate(
+                        lambda: self.workspace.set_offset(identifier, seconds * 1000)
+                    )
+                )
             note = QPlainTextEdit(source.get("synchronization_note", ""))
             note.setObjectName(f"synchronization_note_{config['id']}")
-            note.setPlaceholderText(
-                "E.g. synchronized before import using hardware timestamps; "
-                "alignment checked against a visible tap."
-            )
+            note.setAccessibleName(f"Alignment notes for {title}")
+            note.setPlaceholderText("Optional: timing cue or synchronization method…")
+            note.setToolTip("Saved with the workspace and included in measurement records.")
             note.setFixedHeight(note.fontMetrics().lineSpacing() * 3 + 12)
             note.textChanged.connect(
                 lambda field=note, identifier=config["id"]: self.mutate(
                     lambda: self.workspace.set_synchronization_note(identifier, field.toPlainText())
                 )
             )
-            form.addRow("Synchronization notes", note)
-        close = QPushButton("Close")
+            notes_toggle = QPushButton()
+            notes_toggle.setCheckable(True)
+            notes_toggle.setChecked(bool(note.toPlainText()))
+            notes_toggle.setObjectName(f"alignment_notes_toggle_{config['id']}")
+
+            def show_notes(visible, field=note, toggle=notes_toggle):
+                field.setVisible(visible)
+                toggle.setText("▾ Alignment notes" if visible else "▸ Alignment notes")
+
+            notes_toggle.toggled.connect(show_notes)
+            card.body.addWidget(notes_toggle, 0, Qt.AlignmentFlag.AlignLeft)
+            card.body.addWidget(note)
+            show_notes(notes_toggle.isChecked())
+        content.addStretch()
+        footer = QHBoxLayout()
+        saved_hint = QLabel("Changes apply immediately.")
+        saved_hint.setProperty("role", "muted")
+        footer.addWidget(saved_hint)
+        footer.addStretch()
+        close = QPushButton("Done")
         close.clicked.connect(dialog.close)
-        layout.addWidget(close)
+        footer.addWidget(close)
+        layout.addLayout(footer)
+        for button in dialog.findChildren(QPushButton):
+            button.setAutoDefault(False)
         self.alignment_dialog = dialog
-        dialog.adjustSize()
+        dialog.resize(560, min(460, int(dialog.screen().availableGeometry().height() * 0.8)))
         dialog.show()
 
     def details(self):

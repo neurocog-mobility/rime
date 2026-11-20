@@ -412,6 +412,7 @@ class ReviewWindow(QMainWindow):
         menu = self.menuBar().addMenu("File")
         menu.addAction("Open…", self.open_file)
         menu.addAction("Save review", self.save).setShortcut("Ctrl+S")
+        menu.addAction("Export dataset…", self.export_dataset)
         menu.addAction("Close", self.close)
         edit = self.menuBar().addMenu("Edit")
         edit.addAction("Undo", lambda: self.history(False)).setShortcut("Ctrl+Z")
@@ -863,6 +864,13 @@ class ReviewWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.warning(self, "Review not saved", str(exc))
             return False
+
+    def export_dataset(self):
+        from .dataset_export import DatasetExportDialog
+
+        dialog = DatasetExportDialog(self.workspace, self)
+        dialog.exec()
+        dialog.deleteLater()
 
     def open_file(self):
         if self.parent():
